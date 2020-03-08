@@ -9,7 +9,7 @@ fn main() {
             .map(|_| rand::thread_rng().gen_range(0, 7))
             .collect();
 
-        let max: i32 = *input.iter().max().unwrap();
+        let max: i32 = *input.iter().max().expect("oops, there was no max");
 
         let mut ocounter = 0;
         let map = (0..max)
@@ -82,9 +82,9 @@ fn colorized_print_map(map: Vec<String>) {
     for i in map {
         for x in i.chars() {
             let c = if x == 'H' {
-                "H".red()
+                " ".on_red()
             } else if x == 'O' {
-                "O".blue()
+                " ".on_blue()
             } else {
                 " ".normal()
             };

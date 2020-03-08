@@ -34,22 +34,7 @@ This makes for a fun interaction and allows correctness to be checked visually.
 
 After installing rust and cargo, run `cargo run`. To stop it, press ^C.
 
-## example outputs
+## example output
 
-```
-       HOOOOOH
-    HOOHOOOOOH
-    HOOHOOOOOH
-    HHOHHOOOOH
-   HHHHHHOHOHH
-   HHHHHHOHOHH
-result: 28
+![demo output](imgs/demo.png)
 
-H
-HOOOOOHOOOOOOHOOH
-HOOOHOHOHOOOOHOOH
-HHOOHOHOHOHOOHHOHOH
-HHOOHOHOHOHOHHHHHHH
-HHOOHOHOHOHHHHHHHHH
-result: 44
-```
