@@ -5,7 +5,7 @@ pub enum MapElement {
     Air,
 }
 
-pub fn solve_problem(input: &Vec<i32>) -> (Vec<Vec<MapElement>>, i32) {
+pub fn solve_problem(input: &[i32]) -> (Vec<Vec<MapElement>>, i32) {
     let max: i32 = *input.iter().max().expect("oops, there was no max");
 
     let mut ocounter = 0;
@@ -14,7 +14,7 @@ pub fn solve_problem(input: &Vec<i32>) -> (Vec<Vec<MapElement>>, i32) {
         .map(|i: i32| {
             let map = generate_map_line(&input, i);
             let (map, water_count) = waterize_map_line(&map);
-            ocounter = ocounter + water_count;
+            ocounter += water_count;
             map
         })
         .collect::<Vec<Vec<MapElement>>>();
@@ -22,7 +22,7 @@ pub fn solve_problem(input: &Vec<i32>) -> (Vec<Vec<MapElement>>, i32) {
 }
 
 /// Generates a map line from the input array and the current line
-fn generate_map_line(input: &Vec<i32>, i: i32) -> Vec<MapElement> {
+fn generate_map_line(input: &[i32], i: i32) -> Vec<MapElement> {
     input
         .iter()
         .map(|x: &i32| {
@@ -35,7 +35,7 @@ fn generate_map_line(input: &Vec<i32>, i: i32) -> Vec<MapElement> {
         .collect::<Vec<MapElement>>()
 }
 
-fn waterize_map_line(map: &Vec<MapElement>) -> (Vec<MapElement>, i32) {
+fn waterize_map_line(map: &[MapElement]) -> (Vec<MapElement>, i32) {
     let mut ret: Vec<MapElement> = Vec::new();
     let mut open = false;
     let mut counter = 0;
@@ -57,13 +57,13 @@ fn waterize_map_line(map: &Vec<MapElement>) -> (Vec<MapElement>, i32) {
                 MapElement::Land => {
                     for _ in 0..counter {
                         ret.push(MapElement::Water);
-                        ocounter = ocounter + 1;
+                        ocounter += 1;
                     }
                     counter = 0;
                     ret.push(MapElement::Land);
                 }
                 MapElement::Air => {
-                    counter = counter + 1;
+                    counter += 1;
                 }
                 _ => panic!("at this point a map should not have water"),
             }
