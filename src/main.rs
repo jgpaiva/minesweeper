@@ -31,6 +31,8 @@ fn colorized_print_map(map: Vec<Vec<MapElement>>) {
                 MapElement::Land => " ".on_red(),
                 MapElement::Water => " ".on_blue(),
                 MapElement::Air => " ".normal(),
+                MapElement::Mine => " ".normal(),
+                MapElement::Empty => " ".normal(),
             };
             print!("{}", c);
         }
