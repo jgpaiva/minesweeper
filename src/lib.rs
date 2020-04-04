@@ -1,5 +1,3 @@
-use lazy_static::lazy_static;
-
 #[derive(Debug, PartialEq)]
 pub enum MapElement {
     Land,
@@ -79,37 +77,58 @@ fn waterize_map_line(map: &[MapElement]) -> (Vec<MapElement>, i32) {
     (ret, ocounter)
 }
 
-fn create_board(_width: i32, _height:i32, _mines: i32, _generator: Box<dyn FnMut(i32, i32) -> i32> ) -> std::vec::Vec<std::vec::Vec<MapElement>>{
-    vec![
-        vec![
-            MapElement::Mine,
-            MapElement::Empty,
-            MapElement::Empty,
-            MapElement::Empty,
-        ],
-        vec![
-            MapElement::Empty,
-            MapElement::Mine,
-            MapElement::Empty,
-            MapElement::Empty,
-        ],
-        vec![
-            MapElement::Empty,
-            MapElement::Empty,
-            MapElement::Mine,
-            MapElement::Empty,
-        ],
-        vec![
-            MapElement::Empty,
-            MapElement::Empty,
-            MapElement::Empty,
-            MapElement::Mine,
-        ],
-    ]}
+//fn create_board(width: i32, height:i32, mines: i32, generator: &mut Box<dyn FnMut(i32, i32) -> i32>) -> std::vec::Vec<std::vec::Vec<MapElement>>{
+//    for i in 0..mines {
+//        let x = generator(0, width);
+//        let y = generator(0, height);
+//    }
+//    vec![
+//        vec![
+//            MapElement::Mine,
+//            MapElement::Empty,
+//            MapElement::Empty,
+//            MapElement::Empty,
+//        ],
+//        vec![
+//            MapElement::Empty,
+//            MapElement::Mine,
+//            MapElement::Empty,
+//            MapElement::Empty,
+//        ],
+//        vec![
+//            MapElement::Empty,
+//            MapElement::Empty,
+//            MapElement::Mine,
+//            MapElement::Empty,
+//        ],
+//        vec![
+//            MapElement::Empty,
+//            MapElement::Empty,
+//            MapElement::Empty,
+//            MapElement::Mine,
+//        ],
+//    ]}
+
+use std::rc::Rc as Rc;
+use std::cell::RefCell as RefCell;
+
+fn do_stuff(rand: Rc<RefCell<dyn FnMut(i32, i32)-> i32>>) -> i32 {
+    return rand.borrow_mut()(0,0);
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_do_stuff() {
+        let mut v = vec![0,0,1,1,2,2,3,3];
+        let rand: Rc<RefCell<dyn FnMut(i32, i32)-> i32>>  = Rc::new(RefCell(move |_start: i32, _end: i32| {
+            return v.pop().unwrap();
+        }));
+        let val = do_stuff(rand);
+        assert_eq!(val, 1)
+    }
 
     #[test]
     fn test_solve_problem() {
@@ -145,52 +164,53 @@ mod tests {
         assert_eq!(water_counter, 5);
     }
 
-    //struct RandValues<'a>{
-        //vec: &'a std::vec::Vec<i32>,
-        //iter: std::slice::Iter<i32><'a>
-    //}
-
-    #[test]
-    fn test_create_board() {
-        let width = 4;
-        let height = 4;
-        let mines = 4;
-        lazy_static! {
-            static ref z: &'static Vec<i32> = vec![0,0,1,1,2,2,3,3];
-        }
-        let iter: &'static std::slice::Iter<i32> = &Box::new(z.iter());
-        //#let vec = RandValues { vec: z, iter: z.iter()};
-        let rand: Box<dyn FnMut(i32, i32) -> i32> = Box::new(|_start: i32, _end: i32| {
-            let v: &i32 = iter.next().unwrap();
-            return *v;
-        });
-        let board = create_board(width, height, mines, rand);
-        let expected_board = vec![
-            vec![
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-            ],
-            vec![
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-            ],
-            vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-            ],
-            vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-            ],
-        ];
-        assert_eq!(board, expected_board);
-    }
+//    #[test]
+//    fn test_create_board() {
+//        let width = 4;
+//        let height = 4;
+//        let mines = 4;
+//        //Lazy_static! {
+//        //    static ref z: &'static Vec<i32> = vec![0,0,1,1,2,2,3,3];
+//        //}
+//        //Let iter: &'static std::slice::Iter<i32> = &Box::new(z.iter());
+//        ////#let vec = RandValues { vec: z, iter: z.iter()};
+//        //Let rand: Box<dyn FnMut(i32, i32) -> i32> = Box::new(|_start: i32, _end: i32| {
+//        //    let v: &i32 = iter.next().unwrap();
+//        //    return *v;
+//        //});
+//        //use std::rc::Rc;
+//        //use std::cell::RefCell;
+//        let mut v = vec![0,0,1,1,2,2,3,3];
+//        let &mut rand: Box<dyn FnMut(i32, i32) -> i32> = Box::new(move |_start: i32, _end: i32| {
+//            return v.pop().unwrap();
+//        });
+//        let board = create_board(width, height, mines, &mut rand);
+//        let expected_board = vec![
+//            vec![
+//                MapElement::Mine,
+//                MapElement::Empty,
+//                MapElement::Empty,
+//                MapElement::Empty,
+//            ],
+//            vec![
+//                MapElement::Empty,
+//                MapElement::Mine,
+//                MapElement::Empty,
+//                MapElement::Empty,
+//            ],
+//            vec![
+//                MapElement::Empty,
+//                MapElement::Empty,
+//                MapElement::Mine,
+//                MapElement::Empty,
+//            ],
+//            vec![
+//                MapElement::Empty,
+//                MapElement::Empty,
+//                MapElement::Empty,
+//                MapElement::Mine,
+//            ],
+//        ];
+//        assert_eq!(board, expected_board);
+//    }
 }
