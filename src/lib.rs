@@ -1,119 +1,128 @@
 #[derive(Debug, PartialEq)]
 pub enum MapElement {
-    Land,
-    Water,
-    Air,
     Mine,
     Empty,
+    Number { count: i32 },
 }
 
-pub fn solve_problem(input: &[i32]) -> (Vec<Vec<MapElement>>, i32) {
-    let max: i32 = *input.iter().max().expect("oops, there was no max");
-
-    let mut ocounter = 0;
-    let map = (0..max)
-        .rev()
-        .map(|i: i32| {
-            let map = generate_map_line(&input, i);
-            let (map, water_count) = waterize_map_line(&map);
-            ocounter += water_count;
-            map
-        })
-        .collect::<Vec<Vec<MapElement>>>();
-    (map, ocounter)
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct Point {
+    pub x: i32,
+    pub y: i32,
 }
 
-/// Generates a map line from the input array and the current line
-fn generate_map_line(input: &[i32], i: i32) -> Vec<MapElement> {
-    input
-        .iter()
-        .map(|x: &i32| {
-            if *x > i {
-                MapElement::Land
-            } else {
-                MapElement::Air
-            }
-        })
-        .collect::<Vec<MapElement>>()
+pub struct Board {
+    map: Vec<Vec<MapElement>>,
+    pub width: usize,
+    pub height: usize,
+    pub mines: usize,
 }
 
-fn waterize_map_line(map: &[MapElement]) -> (Vec<MapElement>, i32) {
-    let mut ret: Vec<MapElement> = Vec::new();
-    let mut open = false;
-    let mut counter = 0;
-    let mut ocounter = 0;
-    for c in map {
-        if !open {
-            match c {
-                MapElement::Land => {
-                    open = true;
-                    ret.push(MapElement::Land);
-                }
-                MapElement::Air => {
-                    ret.push(MapElement::Air);
-                }
-                _ => panic!("at this point a map should not have water"),
-            }
+impl Board {
+    pub fn at(self: &Self, p: &Point) -> Option<&MapElement> {
+        let x = p.x;
+        let y = p.y;
+        let width = self.width as i32;
+        let height = self.height as i32;
+        if x < 0 || x >= width || y < 0 || y >= height {
+            return None;
         } else {
-            match c {
-                MapElement::Land => {
-                    for _ in 0..counter {
-                        ret.push(MapElement::Water);
-                        ocounter += 1;
-                    }
-                    counter = 0;
-                    ret.push(MapElement::Land);
-                }
-                MapElement::Air => {
-                    counter += 1;
-                }
-                _ => panic!("at this point a map should not have water"),
-            }
+            let x = x as usize;
+            let y = y as usize;
+            return Some(&self.map[y][x]);
         }
     }
-    for _ in 0..counter {
-        ret.push(MapElement::Air);
-    }
-    (ret, ocounter)
 }
 
-//fn create_board(width: i32, height:i32, mines: i32, generator: &mut Box<dyn FnMut(i32, i32) -> i32>) -> std::vec::Vec<std::vec::Vec<MapElement>>{
-//    for i in 0..mines {
-//        let x = generator(0, width);
-//        let y = generator(0, height);
-//    }
-//    vec![
-//        vec![
-//            MapElement::Mine,
-//            MapElement::Empty,
-//            MapElement::Empty,
-//            MapElement::Empty,
-//        ],
-//        vec![
-//            MapElement::Empty,
-//            MapElement::Mine,
-//            MapElement::Empty,
-//            MapElement::Empty,
-//        ],
-//        vec![
-//            MapElement::Empty,
-//            MapElement::Empty,
-//            MapElement::Mine,
-//            MapElement::Empty,
-//        ],
-//        vec![
-//            MapElement::Empty,
-//            MapElement::Empty,
-//            MapElement::Empty,
-//            MapElement::Mine,
-//        ],
-//    ]}
+pub fn create_board(
+    width: usize,
+    height: usize,
+    mines: usize,
+    mut rand: impl FnMut(usize, usize) -> usize,
+) -> Board {
+    let mut points: Vec<Point> = Vec::with_capacity(mines);
+    for _ in 0..mines {
+        loop {
+            let x = rand(0, width) as i32;
+            let y = rand(0, height) as i32;
+            let p = Point { x, y };
+            if points.contains(&p) {
+                continue;
+            }
+            points.push(p);
+            break;
+        }
+    }
 
-use std::rc::Rc as Rc;
-use std::cell::RefCell as RefCell;
+    let mut map: Vec<Vec<MapElement>> = Vec::with_capacity(height);
 
-fn do_stuff(rand: Rc<RefCell<dyn FnMut(i32, i32)-> i32>>) -> i32 {
-    return rand.borrow_mut()(0,0);
+    for y in 0..height {
+        let y = y as i32;
+        let mut line: Vec<MapElement> = Vec::with_capacity(width);
+        for x in 0..width {
+            let x = x as i32;
+            if points.contains(&Point { x, y }) {
+                line.push(MapElement::Mine);
+            } else {
+                line.push(MapElement::Empty);
+            }
+        }
+        map.push(line);
+    }
+    Board {
+        map,
+        width,
+        height,
+        mines,
+    }
+}
+
+pub fn numbers_on_board(board: Board) -> Board {
+    let mut map: Vec<Vec<MapElement>> = Vec::with_capacity(board.height);
+    for y in 0..board.height {
+        let mut line: Vec<MapElement> = Vec::with_capacity(board.width);
+        let y = y as i32;
+        for x in 0..board.width {
+            let x = x as i32;
+            let p = Point { x, y };
+            let final_val = match board.at(&p) {
+                Some(MapElement::Mine) => MapElement::Mine,
+                Some(MapElement::Empty) => {
+                    let count: i32 = [
+                        Point { x: x - 1, y: y - 1 },
+                        Point { x: x, y: y - 1 },
+                        Point { x: x + 1, y: y - 1 },
+                        Point { x: x - 1, y: y + 1 },
+                        Point { x: x, y: y + 1 },
+                        Point { x: x + 1, y: y + 1 },
+                        Point { x: x - 1, y: y },
+                        Point { x: x + 1, y: y },
+                    ]
+                    .iter()
+                    .map(|p| match board.at(p) {
+                        None => 0,
+                        Some(MapElement::Mine) => 1,
+                        Some(MapElement::Empty) => 0,
+                        _ => 0,
+                    })
+                    .sum();
+                    match count {
+                        0 => MapElement::Empty,
+                        _ => MapElement::Number { count },
+                    }
+                }
+                _ => unreachable!(),
+            };
+            line.push(final_val);
+        }
+        map.push(line);
+    }
+    Board {
+        height: board.height,
+        width: board.width,
+        mines: board.mines,
+        map: map,
+    }
 }
 
 #[cfg(test)]
@@ -121,96 +130,159 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_do_stuff() {
-        let mut v = vec![0,0,1,1,2,2,3,3];
-        let rand: Rc<RefCell<dyn FnMut(i32, i32)-> i32>>  = Rc::new(RefCell(move |_start: i32, _end: i32| {
+    fn test_create_board() {
+        let width = 5;
+        let height = 4;
+        let mines = 4;
+        let mut v = vec![3, 3, 2, 2, 1, 1, 0, 0];
+        let rand = move |_start: usize, _end: usize| -> usize {
             return v.pop().unwrap();
-        }));
-        let val = do_stuff(rand);
-        assert_eq!(val, 1)
+        };
+        let board = create_board(width, height, mines, rand);
+        let expected_map = vec![
+            vec![
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+            ],
+            vec![
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+            ],
+            vec![
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
+            ],
+            vec![
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
+            ],
+        ];
+        assert_eq!(board.map, expected_map);
     }
 
     #[test]
-    fn test_solve_problem() {
-        let input = vec![3, 0, 1, 4];
-        let (map, water_counter) = solve_problem(&input);
+    fn test_create_board_without_repeated_mines() {
+        let width = 5;
+        let height = 4;
+        let mines = 4;
+        let mut v = vec![3, 3, 2, 2, 0, 0, 1, 1, 0, 0];
+        let rand = move |_start: usize, _end: usize| -> usize {
+            return v.pop().unwrap();
+        };
+        let board = create_board(width, height, mines, rand);
         let expected_map = vec![
             vec![
-                MapElement::Air,
-                MapElement::Air,
-                MapElement::Air,
-                MapElement::Land,
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
             ],
             vec![
-                MapElement::Land,
-                MapElement::Water,
-                MapElement::Water,
-                MapElement::Land,
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
             ],
             vec![
-                MapElement::Land,
-                MapElement::Water,
-                MapElement::Water,
-                MapElement::Land,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
+                MapElement::Empty,
             ],
             vec![
-                MapElement::Land,
-                MapElement::Water,
-                MapElement::Land,
-                MapElement::Land,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Empty,
+                MapElement::Mine,
+                MapElement::Empty,
             ],
         ];
-        assert_eq!(map, expected_map);
-        assert_eq!(water_counter, 5);
+        assert_eq!(board.map, expected_map);
     }
 
-//    #[test]
-//    fn test_create_board() {
-//        let width = 4;
-//        let height = 4;
-//        let mines = 4;
-//        //Lazy_static! {
-//        //    static ref z: &'static Vec<i32> = vec![0,0,1,1,2,2,3,3];
-//        //}
-//        //Let iter: &'static std::slice::Iter<i32> = &Box::new(z.iter());
-//        ////#let vec = RandValues { vec: z, iter: z.iter()};
-//        //Let rand: Box<dyn FnMut(i32, i32) -> i32> = Box::new(|_start: i32, _end: i32| {
-//        //    let v: &i32 = iter.next().unwrap();
-//        //    return *v;
-//        //});
-//        //use std::rc::Rc;
-//        //use std::cell::RefCell;
-//        let mut v = vec![0,0,1,1,2,2,3,3];
-//        let &mut rand: Box<dyn FnMut(i32, i32) -> i32> = Box::new(move |_start: i32, _end: i32| {
-//            return v.pop().unwrap();
-//        });
-//        let board = create_board(width, height, mines, &mut rand);
-//        let expected_board = vec![
-//            vec![
-//                MapElement::Mine,
-//                MapElement::Empty,
-//                MapElement::Empty,
-//                MapElement::Empty,
-//            ],
-//            vec![
-//                MapElement::Empty,
-//                MapElement::Mine,
-//                MapElement::Empty,
-//                MapElement::Empty,
-//            ],
-//            vec![
-//                MapElement::Empty,
-//                MapElement::Empty,
-//                MapElement::Mine,
-//                MapElement::Empty,
-//            ],
-//            vec![
-//                MapElement::Empty,
-//                MapElement::Empty,
-//                MapElement::Empty,
-//                MapElement::Mine,
-//            ],
-//        ];
-//        assert_eq!(board, expected_board);
-//    }
+    #[test]
+    fn test_numbers_on_board() {
+        let board = Board {
+            height: 4,
+            width: 5,
+            mines: 4,
+            map: vec![
+                vec![
+                    MapElement::Mine,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                ],
+                vec![
+                    MapElement::Empty,
+                    MapElement::Mine,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                ],
+                vec![
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Mine,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                ],
+                vec![
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Empty,
+                    MapElement::Mine,
+                    MapElement::Empty,
+                ],
+            ],
+        };
+        let board_with_numbers = numbers_on_board(board);
+        let expected_map = vec![
+            vec![
+                MapElement::Mine,
+                MapElement::Number { count: 2 },
+                MapElement::Number { count: 1 },
+                MapElement::Empty,
+                MapElement::Empty,
+            ],
+            vec![
+                MapElement::Number { count: 2 },
+                MapElement::Mine,
+                MapElement::Number { count: 2 },
+                MapElement::Number { count: 1 },
+                MapElement::Empty,
+            ],
+            vec![
+                MapElement::Number { count: 1 },
+                MapElement::Number { count: 2 },
+                MapElement::Mine,
+                MapElement::Number { count: 2 },
+                MapElement::Number { count: 1 },
+            ],
+            vec![
+                MapElement::Empty,
+                MapElement::Number { count: 1 },
+                MapElement::Number { count: 2 },
+                MapElement::Mine,
+                MapElement::Number { count: 1 },
+            ],
+        ];
+        assert_eq!(board_with_numbers.map, expected_map);
+    }
 }
