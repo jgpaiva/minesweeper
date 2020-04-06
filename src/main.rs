@@ -49,7 +49,7 @@ fn colorized_print_map(board: cargotest::Board) {
             let c = match board.at(&cargotest::Point { x, y }) {
                 Some(MapElement::Mine) => " ".on_red(),
                 Some(MapElement::Empty) => " ".on_bright_white(),
-                Some(MapElement::Number { count }) => format!("{}", count).on_blue(),
+                Some(MapElement::Number { count }) => format!("{}", count).black().on_bright_cyan(),
                 _ => unreachable!(),
             };
             print!("{}", c);
