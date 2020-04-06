@@ -1,14 +1,22 @@
 #[derive(Debug, PartialEq)]
 pub enum MapElement {
-    Mine,
-    Empty,
-    Number { count: i32 },
+    Mine { open: bool },
+    Empty { open: bool },
+    Number { open: bool, count: i32 },
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
+}
+
+impl Point {
+    fn new(x: usize, y: usize) -> Point {
+        let x = x as i32;
+        let y = y as i32;
+        Point { x, y }
+    }
 }
 
 pub struct Board {
@@ -43,9 +51,9 @@ pub fn create_board(
     let mut points: Vec<Point> = Vec::with_capacity(mines);
     for _ in 0..mines {
         loop {
-            let x = rand(0, width) as i32;
-            let y = rand(0, height) as i32;
-            let p = Point { x, y };
+            let x = rand(0, width);
+            let y = rand(0, height);
+            let p = Point::new(x, y);
             if points.contains(&p) {
                 continue;
             }
@@ -54,21 +62,16 @@ pub fn create_board(
         }
     }
 
-    let mut map: Vec<Vec<MapElement>> = Vec::with_capacity(height);
-
-    for y in 0..height {
-        let y = y as i32;
-        let mut line: Vec<MapElement> = Vec::with_capacity(width);
-        for x in 0..width {
-            let x = x as i32;
-            if points.contains(&Point { x, y }) {
-                line.push(MapElement::Mine);
-            } else {
-                line.push(MapElement::Empty);
-            }
-        }
-        map.push(line);
-    }
+    let map = (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| match points.contains(&Point::new(x, y)) {
+                    true => MapElement::Mine { open: false },
+                    false => MapElement::Empty { open: false },
+                })
+                .collect()
+        })
+        .collect();
     Board {
         map,
         width,
@@ -78,45 +81,42 @@ pub fn create_board(
 }
 
 pub fn numbers_on_board(board: Board) -> Board {
-    let mut map: Vec<Vec<MapElement>> = Vec::with_capacity(board.height);
-    for y in 0..board.height {
-        let mut line: Vec<MapElement> = Vec::with_capacity(board.width);
-        let y = y as i32;
-        for x in 0..board.width {
-            let x = x as i32;
-            let p = Point { x, y };
-            let final_val = match board.at(&p) {
-                Some(MapElement::Mine) => MapElement::Mine,
-                Some(MapElement::Empty) => {
-                    let count: i32 = [
-                        Point { x: x - 1, y: y - 1 },
-                        Point { x: x, y: y - 1 },
-                        Point { x: x + 1, y: y - 1 },
-                        Point { x: x - 1, y: y + 1 },
-                        Point { x: x, y: y + 1 },
-                        Point { x: x + 1, y: y + 1 },
-                        Point { x: x - 1, y: y },
-                        Point { x: x + 1, y: y },
-                    ]
-                    .iter()
-                    .map(|p| match board.at(p) {
-                        None => 0,
-                        Some(MapElement::Mine) => 1,
-                        Some(MapElement::Empty) => 0,
-                        _ => 0,
-                    })
-                    .sum();
-                    match count {
-                        0 => MapElement::Empty,
-                        _ => MapElement::Number { count },
+    let map = (0..board.height)
+        .map(|y| {
+            (0..board.width)
+                .map(|x| match board.at(&Point::new(x, y)) {
+                    Some(MapElement::Mine { open: _ }) => MapElement::Mine { open: false },
+                    Some(MapElement::Empty { open: _ }) => {
+                        let x = x as i32;
+                        let y = y as i32;
+                        let count: i32 = [
+                            Point { x: x - 1, y: y - 1 },
+                            Point { x: x, y: y - 1 },
+                            Point { x: x + 1, y: y - 1 },
+                            Point { x: x - 1, y: y + 1 },
+                            Point { x: x, y: y + 1 },
+                            Point { x: x + 1, y: y + 1 },
+                            Point { x: x - 1, y: y },
+                            Point { x: x + 1, y: y },
+                        ]
+                        .iter()
+                        .map(|p| match board.at(p) {
+                            None => 0,
+                            Some(MapElement::Mine { open: _ }) => 1,
+                            Some(MapElement::Empty { open: _ }) => 0,
+                            _ => 0,
+                        })
+                        .sum();
+                        match count {
+                            0 => MapElement::Empty { open: false },
+                            _ => MapElement::Number { open: false, count },
+                        }
                     }
-                }
-                _ => unreachable!(),
-            };
-            line.push(final_val);
-        }
-        map.push(line);
-    }
+                    _ => unreachable!(),
+                })
+                .collect()
+        })
+        .collect();
     Board {
         height: board.height,
         width: board.width,
@@ -141,32 +141,32 @@ mod tests {
         let board = create_board(width, height, mines, rand);
         let expected_map = vec![
             vec![
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
             ],
         ];
         assert_eq!(board.map, expected_map);
@@ -184,32 +184,32 @@ mod tests {
         let board = create_board(width, height, mines, rand);
         let expected_map = vec![
             vec![
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Empty,
-                MapElement::Mine,
-                MapElement::Empty,
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+                MapElement::Mine { open: false },
+                MapElement::Empty { open: false },
             ],
         ];
         assert_eq!(board.map, expected_map);
@@ -223,64 +223,100 @@ mod tests {
             mines: 4,
             map: vec![
                 vec![
-                    MapElement::Mine,
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Empty,
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
                 ],
                 vec![
-                    MapElement::Empty,
-                    MapElement::Mine,
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Empty,
+                    MapElement::Empty { open: false },
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
                 ],
                 vec![
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Mine,
-                    MapElement::Empty,
-                    MapElement::Empty,
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
                 ],
                 vec![
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Empty,
-                    MapElement::Mine,
-                    MapElement::Empty,
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
                 ],
             ],
         };
         let board_with_numbers = numbers_on_board(board);
         let expected_map = vec![
             vec![
-                MapElement::Mine,
-                MapElement::Number { count: 2 },
-                MapElement::Number { count: 1 },
-                MapElement::Empty,
-                MapElement::Empty,
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Number { count: 2 },
-                MapElement::Mine,
-                MapElement::Number { count: 2 },
-                MapElement::Number { count: 1 },
-                MapElement::Empty,
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
+                MapElement::Empty { open: false },
             ],
             vec![
-                MapElement::Number { count: 1 },
-                MapElement::Number { count: 2 },
-                MapElement::Mine,
-                MapElement::Number { count: 2 },
-                MapElement::Number { count: 1 },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
             ],
             vec![
-                MapElement::Empty,
-                MapElement::Number { count: 1 },
-                MapElement::Number { count: 2 },
-                MapElement::Mine,
-                MapElement::Number { count: 1 },
+                MapElement::Empty { open: false },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
+                MapElement::Number {
+                    open: false,
+                    count: 2,
+                },
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    open: false,
+                    count: 1,
+                },
             ],
         ];
         assert_eq!(board_with_numbers.map, expected_map);
