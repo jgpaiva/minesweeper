@@ -100,39 +100,44 @@ pub fn create_board(
     }
 }
 
+pub fn surrounding_points(p: &Point) -> Vec<Point> {
+    [p.x - 1, p.x, p.x + 1]
+        .iter()
+        .flat_map(|&x| {
+            [p.y - 1, p.y, p.y + 1]
+                .iter()
+                .map(|&y| Point { x, y })
+                .filter(|&Point { x, y }| p.x != x || p.y != y)
+                .collect::<Vec<Point>>()
+        })
+        .collect()
+}
+
 pub fn numbers_on_board(board: Board) -> Board {
     let map = (0..board.height)
         .map(|y| {
             (0..board.width)
-                .map(|x| match board.at(&Point::new(x, y)) {
-                    Some(MapElement::Mine { open: _ }) => MapElement::Mine { open: false },
-                    Some(MapElement::Empty { open: _ }) => {
-                        let x = x as i32;
-                        let y = y as i32;
-                        let count: i32 = [
-                            Point { x: x - 1, y: y - 1 },
-                            Point { x: x, y: y - 1 },
-                            Point { x: x + 1, y: y - 1 },
-                            Point { x: x - 1, y: y + 1 },
-                            Point { x: x, y: y + 1 },
-                            Point { x: x + 1, y: y + 1 },
-                            Point { x: x - 1, y: y },
-                            Point { x: x + 1, y: y },
-                        ]
-                        .iter()
-                        .map(|p| match board.at(p) {
-                            None => 0,
-                            Some(MapElement::Mine { open: _ }) => 1,
-                            Some(MapElement::Empty { open: _ }) => 0,
-                            _ => 0,
-                        })
-                        .sum();
-                        match count {
-                            0 => MapElement::Empty { open: false },
-                            _ => MapElement::Number { open: false, count },
+                .map(|x| {
+                    let point = Point::new(x, y);
+                    match board.at(&point) {
+                        Some(MapElement::Mine { open: _ }) => MapElement::Mine { open: false },
+                        Some(MapElement::Empty { open: _ }) => {
+                            let count = surrounding_points(&point)
+                                .iter()
+                                .map(|p| match board.at(p) {
+                                    None => 0,
+                                    Some(MapElement::Mine { open: _ }) => 1,
+                                    Some(MapElement::Empty { open: _ }) => 0,
+                                    _ => 0,
+                                })
+                                .sum();
+                            match count {
+                                0 => MapElement::Empty { open: false },
+                                _ => MapElement::Number { open: false, count },
+                            }
                         }
+                        _ => unreachable!(),
                     }
-                    _ => unreachable!(),
                 })
                 .collect()
         })
@@ -150,10 +155,7 @@ pub fn open_item(board: Board, point: Point) -> Board {
 
     let newpoint = match board_point {
         Some(MapElement::Empty { open: false }) => MapElement::Empty { open: true },
-        Some(MapElement::Number {
-            open: false,
-            count,
-        }) => MapElement::Number {
+        Some(MapElement::Number { open: false, count }) => MapElement::Number {
             open: true,
             count: *count,
         },
@@ -358,6 +360,23 @@ mod tests {
             ],
         ];
         assert_eq!(board_with_numbers.map, expected_map);
+    }
+
+    #[test]
+    fn test_surrounding_points() {
+        assert_eq!(
+            surrounding_points(&Point { x: 1, y: 10 }),
+            vec![
+                Point { x: 0, y: 9 },
+                Point { x: 0, y: 10 },
+                Point { x: 0, y: 11 },
+                Point { x: 1, y: 9 },
+                Point { x: 1, y: 11 },
+                Point { x: 2, y: 9 },
+                Point { x: 2, y: 10 },
+                Point { x: 2, y: 11 }
+            ]
+        );
     }
 
     #[test]
