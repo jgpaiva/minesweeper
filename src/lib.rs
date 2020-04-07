@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum MapElement {
     Mine { open: bool },
     Empty { open: bool },
@@ -28,16 +28,36 @@ pub struct Board {
 
 impl Board {
     pub fn at(self: &Self, p: &Point) -> Option<&MapElement> {
-        let x = p.x;
-        let y = p.y;
         let width = self.width as i32;
         let height = self.height as i32;
-        if x < 0 || x >= width || y < 0 || y >= height {
+        if p.x < 0 || p.x >= width || p.y < 0 || p.y >= height {
             return None;
         } else {
-            let x = x as usize;
-            let y = y as usize;
+            let x = p.x as usize;
+            let y = p.y as usize;
             return Some(&self.map[y][x]);
+        }
+    }
+
+    pub fn replace(self: &Self, p: &Point, el: MapElement) -> Board {
+        let map = (0..self.height)
+            .map(|y| {
+                (0..self.width)
+                    .map(|x| {
+                        if Point::new(x, y) == *p {
+                            el.clone()
+                        } else {
+                            self.at(&Point::new(x, y)).unwrap().clone()
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        Board {
+            width: self.width,
+            height: self.height,
+            mines: self.mines,
+            map: map,
         }
     }
 }
@@ -123,6 +143,24 @@ pub fn numbers_on_board(board: Board) -> Board {
         mines: board.mines,
         map: map,
     }
+}
+
+pub fn open_item(board: Board, point: Point) -> Board {
+    let board_point = board.at(&point);
+
+    let newpoint = match board_point {
+        Some(MapElement::Empty { open: false }) => MapElement::Empty { open: true },
+        Some(MapElement::Number {
+            open: false,
+            count,
+        }) => MapElement::Number {
+            open: true,
+            count: *count,
+        },
+        _ => unreachable!(),
+    };
+
+    board.replace(&point, newpoint)
 }
 
 #[cfg(test)]
@@ -320,5 +358,61 @@ mod tests {
             ],
         ];
         assert_eq!(board_with_numbers.map, expected_map);
+    }
+
+    #[test]
+    fn test_open_item() {
+        let board = Board {
+            height: 2,
+            width: 5,
+            mines: 4,
+            map: vec![
+                vec![
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                ],
+                vec![
+                    MapElement::Empty { open: false },
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                ],
+            ],
+        };
+        let board = numbers_on_board(board);
+        let board = open_item(board, Point::new(1, 0));
+        let expected_map = vec![
+            vec![
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    count: 2,
+                    open: true,
+                },
+                MapElement::Number {
+                    count: 1,
+                    open: false,
+                },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+            ],
+            vec![
+                MapElement::Number {
+                    count: 2,
+                    open: false,
+                },
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    count: 1,
+                    open: false,
+                },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+            ],
+        ];
+        assert_eq!(board.map, expected_map);
     }
 }
