@@ -31,11 +31,11 @@ impl Board {
         let width = self.width as i32;
         let height = self.height as i32;
         if p.x < 0 || p.x >= width || p.y < 0 || p.y >= height {
-            return None;
+            None
         } else {
             let x = p.x as usize;
             let y = p.y as usize;
-            return Some(&self.map[y][x]);
+            Some(&self.map[y][x])
         }
     }
 
@@ -57,7 +57,7 @@ impl Board {
             width: self.width,
             height: self.height,
             mines: self.mines,
-            map: map,
+            map,
         }
     }
 }
@@ -85,9 +85,12 @@ pub fn create_board(
     let map = (0..height)
         .map(|y| {
             (0..width)
-                .map(|x| match points.contains(&Point::new(x, y)) {
-                    true => MapElement::Mine { open: false },
-                    false => MapElement::Empty { open: false },
+                .map(|x| {
+                    if points.contains(&Point::new(x, y)) {
+                        MapElement::Mine { open: false }
+                    } else {
+                        MapElement::Empty { open: false }
+                    }
                 })
                 .collect()
         })
@@ -120,14 +123,14 @@ pub fn numbers_on_board(board: Board) -> Board {
                 .map(|x| {
                     let point = Point::new(x, y);
                     match board.at(&point) {
-                        Some(MapElement::Mine { open: _ }) => MapElement::Mine { open: false },
-                        Some(MapElement::Empty { open: _ }) => {
+                        Some(MapElement::Mine { .. }) => MapElement::Mine { open: false },
+                        Some(MapElement::Empty { .. }) => {
                             let count = surrounding_points(&point)
                                 .iter()
                                 .map(|p| match board.at(p) {
                                     None => 0,
-                                    Some(MapElement::Mine { open: _ }) => 1,
-                                    Some(MapElement::Empty { open: _ }) => 0,
+                                    Some(MapElement::Mine { .. }) => 1,
+                                    Some(MapElement::Empty { .. }) => 0,
                                     _ => 0,
                                 })
                                 .sum();
@@ -146,7 +149,7 @@ pub fn numbers_on_board(board: Board) -> Board {
         height: board.height,
         width: board.width,
         mines: board.mines,
-        map: map,
+        map,
     }
 }
 

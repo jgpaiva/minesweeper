@@ -37,8 +37,8 @@ fn colorized_print_map(board: cargotest::Board) {
     mapping.extend((b'0'..=b'9').map(char::from));
     mapping.extend((b'a'..=b'z').map(char::from));
     print!("  ");
-    for i in 0..board.width {
-        print!("{}", mapping[i]);
+    for item in mapping.iter().take(board.width) {
+        print!("{}", item);
     }
     println!();
     for y in 0..board.height {
@@ -61,8 +61,8 @@ fn colorized_print_map(board: cargotest::Board) {
     }
 
     print!("  ");
-    for i in 0..board.width {
-        print!("{}", mapping[i]);
+    for item in mapping.iter().take(board.width) {
+        print!("{}", item);
     }
     println!();
 }
