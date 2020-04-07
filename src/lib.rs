@@ -19,11 +19,18 @@ impl Point {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum BoardState {
+    NotReady,
+    Playing,
+    Failed,
+}
 pub struct Board {
     map: Vec<Vec<MapElement>>,
     pub width: usize,
     pub height: usize,
     pub mines: usize,
+    pub state: BoardState,
 }
 
 impl Board {
@@ -58,6 +65,7 @@ impl Board {
             height: self.height,
             mines: self.mines,
             map,
+            state: self.state.clone(),
         }
     }
 }
@@ -100,6 +108,7 @@ pub fn create_board(
         width,
         height,
         mines,
+        state: BoardState::NotReady,
     }
 }
 
@@ -150,6 +159,7 @@ pub fn numbers_on_board(board: Board) -> Board {
         width: board.width,
         mines: board.mines,
         map,
+        state: BoardState::Playing,
     }
 }
 
@@ -157,15 +167,24 @@ pub fn open_item(board: Board, point: Point) -> Board {
     let board_point = board.at(&point);
 
     let newpoint = match board_point {
-        Some(MapElement::Empty { open: false }) => MapElement::Empty { open: true },
-        Some(MapElement::Number { open: false, count }) => MapElement::Number {
+        Some(MapElement::Empty { open: false }) => Some(MapElement::Empty { open: true }),
+        Some(MapElement::Number { open: false, count }) => Some(MapElement::Number {
             open: true,
             count: *count,
-        },
-        _ => unreachable!(),
+        }),
+        _ => None,
     };
 
-    board.replace(&point, newpoint)
+    match newpoint {
+        Some(newpoint) => board.replace(&point, newpoint),
+        None => Board {
+            map: board.map,
+            width: board.width,
+            height: board.height,
+            mines: board.mines,
+            state: BoardState::Failed,
+        },
+    }
 }
 
 #[cfg(test)]
@@ -213,6 +232,7 @@ mod tests {
             ],
         ];
         assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::NotReady);
     }
 
     #[test]
@@ -256,6 +276,7 @@ mod tests {
             ],
         ];
         assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::NotReady);
     }
 
     #[test]
@@ -264,6 +285,7 @@ mod tests {
             height: 4,
             width: 5,
             mines: 4,
+            state: BoardState::NotReady,
             map: vec![
                 vec![
                     MapElement::Mine { open: false },
@@ -295,7 +317,7 @@ mod tests {
                 ],
             ],
         };
-        let board_with_numbers = numbers_on_board(board);
+        let board = numbers_on_board(board);
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
@@ -362,7 +384,8 @@ mod tests {
                 },
             ],
         ];
-        assert_eq!(board_with_numbers.map, expected_map);
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
     }
 
     #[test]
@@ -383,11 +406,12 @@ mod tests {
     }
 
     #[test]
-    fn test_open_item() {
+    fn test_valid_open_item() {
         let board = Board {
             height: 2,
             width: 5,
             mines: 4,
+            state: BoardState::Playing,
             map: vec![
                 vec![
                     MapElement::Mine { open: false },
@@ -436,5 +460,64 @@ mod tests {
             ],
         ];
         assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
+    }
+
+    #[test]
+    fn test_invalid_open_item() {
+        let board = Board {
+            height: 2,
+            width: 5,
+            mines: 4,
+            state: BoardState::Playing,
+            map: vec![
+                vec![
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                ],
+                vec![
+                    MapElement::Empty { open: false },
+                    MapElement::Mine { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                    MapElement::Empty { open: false },
+                ],
+            ],
+        };
+        let board = numbers_on_board(board);
+        let board = open_item(board, Point::new(0, 0));
+        let expected_map = vec![
+            vec![
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    count: 2,
+                    open: false,
+                },
+                MapElement::Number {
+                    count: 1,
+                    open: false,
+                },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+            ],
+            vec![
+                MapElement::Number {
+                    count: 2,
+                    open: false,
+                },
+                MapElement::Mine { open: false },
+                MapElement::Number {
+                    count: 1,
+                    open: false,
+                },
+                MapElement::Empty { open: false },
+                MapElement::Empty { open: false },
+            ],
+        ];
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Failed);
     }
 }
