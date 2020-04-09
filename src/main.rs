@@ -115,7 +115,7 @@ fn colorized_print_map(board: &cargotest::Board) {
             };
             print!("{} ", c);
         }
-        print!(" {}", mapping[y]);
+        print!("{}", mapping[y]);
         println!();
     }
 
