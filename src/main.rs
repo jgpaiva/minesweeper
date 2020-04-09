@@ -4,7 +4,6 @@ use std::io;
 
 use cargotest::create_board;
 use cargotest::numbers_on_board;
-use cargotest::open_item;
 use cargotest::BoardState;
 use cargotest::MapElement;
 use cargotest::Point;
@@ -35,7 +34,7 @@ fn main() {
         let row = coord_reverse_mapping(row);
         let p = Point { x: column, y: row };
 
-        board = open_item(board, p);
+        board = board.open_item(p);
     }
 }
 
@@ -45,7 +44,7 @@ fn read_char(message: &str) -> u8 {
     io::stdin()
         .read_line(&mut line)
         .expect("failed to read line");
-    line.as_bytes().first().unwrap().clone()
+    *line.as_bytes().first().unwrap()
 }
 
 fn coord_reverse_mapping(c: u8) -> i32 {
@@ -57,8 +56,8 @@ fn coord_reverse_mapping(c: u8) -> i32 {
     let v = mapping
         .iter()
         .enumerate()
-        .filter(|(i, &x)| c == x)
-        .nth(0)
+        .filter(|(_, &x)| c == x)
+        .next()
         .unwrap();
     v.0 as i32
 }
@@ -90,21 +89,21 @@ fn colorized_print_map(board: &cargotest::Board) {
             let x = x as i32;
             let y = y as i32;
             let c = match board.at(&cargotest::Point { x, y }) {
-                Some(MapElement::Mine { open: open }) => {
+                Some(MapElement::Mine { open }) => {
                     if is_failed || *open {
                         " ".on_red()
                     } else {
                         " ".on_yellow()
                     }
                 }
-                Some(MapElement::Empty { open: open }) => {
+                Some(MapElement::Empty { open }) => {
                     if is_failed || *open {
                         " ".on_bright_white()
                     } else {
                         " ".on_yellow()
                     }
                 }
-                Some(MapElement::Number { open: open, count }) => {
+                Some(MapElement::Number { open, count }) => {
                     if is_failed || *open {
                         format!("{}", count).black().on_bright_cyan()
                     } else {

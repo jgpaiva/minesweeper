@@ -68,6 +68,30 @@ impl Board {
             state: self.state.clone(),
         }
     }
+
+    pub fn open_item(self: &Self, point: Point) -> Board {
+        let board_point = self.at(&point);
+
+        let newpoint = match board_point {
+            Some(MapElement::Empty { open: false }) => Some(MapElement::Empty { open: true }),
+            Some(MapElement::Number { open: false, count }) => Some(MapElement::Number {
+                open: true,
+                count: *count,
+            }),
+            _ => None,
+        };
+
+        match newpoint {
+            Some(newpoint) => self.replace(&point, newpoint),
+            None => Board {
+                map: self.map.clone(),
+                width: self.width,
+                height: self.height,
+                mines: self.mines,
+                state: BoardState::Failed,
+            },
+        }
+    }
 }
 
 pub fn create_board(
@@ -165,35 +189,11 @@ pub fn numbers_on_board(board: Board) -> Board {
 }
 
 pub fn cascade_open_item(board: Board, point: Point) -> Board {
-    let board = open_item(board, point);
+    let board = board.open_item(point);
     if matches!(board.state, BoardState::Failed) {
         return board;
     }
-    return board;
-}
-
-pub fn open_item(board: Board, point: Point) -> Board {
-    let board_point = board.at(&point);
-
-    let newpoint = match board_point {
-        Some(MapElement::Empty { open: false }) => Some(MapElement::Empty { open: true }),
-        Some(MapElement::Number { open: false, count }) => Some(MapElement::Number {
-            open: true,
-            count: *count,
-        }),
-        _ => None,
-    };
-
-    match newpoint {
-        Some(newpoint) => board.replace(&point, newpoint),
-        None => Board {
-            map: board.map,
-            width: board.width,
-            height: board.height,
-            mines: board.mines,
-            state: BoardState::Failed,
-        },
-    }
+    board
 }
 
 #[cfg(test)]
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn test_valid_open_item() {
         let board = numbers_on_board(two_by_five_board());
-        let board = open_item(board, Point::new(1, 0));
+        let board = board.open_item(Point::new(1, 0));
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
@@ -475,7 +475,7 @@ mod tests {
     #[test]
     fn test_invalid_open_item() {
         let board = numbers_on_board(two_by_five_board());
-        let board = open_item(board, Point::new(0, 0));
+        let board = board.open_item(Point::new(0, 0));
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
