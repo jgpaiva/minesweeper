@@ -6,3 +6,7 @@ the board.
 ## how to run
 
 After installing rust and cargo, run `cargo run`. To stop it, press ^C.
+
+## example output
+
+![demo output](imgs/demo.png)
