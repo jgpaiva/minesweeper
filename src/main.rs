@@ -149,10 +149,8 @@ mod tests {
     use super::*;
     use cargotest::*;
 
-    fn two_by_five_board() -> Board {
+    fn five_by_two_board() -> Board {
         Board::new(
-            5,
-            2,
             vec![
                 vec![
                     MapElement::Mine { open: false },
@@ -174,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_process_line() {
-        let o = process_line(String::from("o01\n"), &two_by_five_board());
+        let o = process_line(String::from("o01\n"), &five_by_two_board());
         assert_eq!(
             o,
             Some(Operation::Open {
@@ -185,13 +183,13 @@ mod tests {
 
     #[test]
     fn test_process_line_out_of_bounds_argument() {
-        let o = process_line(String::from("o34\n"), &two_by_five_board());
+        let o = process_line(String::from("o34\n"), &five_by_two_board());
         assert_eq!(o, None);
     }
 
     #[test]
     fn test_process_line_bad_arguments() {
-        let o = process_line(String::from("o\n"), &two_by_five_board());
+        let o = process_line(String::from("o\n"), &five_by_two_board());
         assert_eq!(o, None);
     }
 }

@@ -36,13 +36,15 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new(width: usize, height: usize, map: Vec<Vec<MapElement>>) -> Board {
+    pub fn new(map: Vec<Vec<MapElement>>) -> Board {
         let mines = map
             .iter()
             .flat_map(|x| x.iter())
             .filter(|x| matches!(x, MapElement::Mine{..}))
             .map(|_| 1)
             .sum();
+        let width = map.iter().next().unwrap().len();
+        let height = map.len();
         Board {
             width,
             height,
@@ -196,7 +198,7 @@ pub fn create_board(
                 .collect()
         })
         .collect();
-    Board::new(width, height, map)
+    Board::new(map)
 }
 
 pub fn numbers_on_board(board: Board) -> Board {
@@ -240,6 +242,22 @@ pub fn numbers_on_board(board: Board) -> Board {
 mod tests {
     use super::*;
 
+    fn five_by_four_board() -> Board {
+        Board::new(make_map(vec![
+            vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
+            vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
+            vec![(false, 0), (false, 0), (false, -1), (false, 0), (false, 0)],
+            vec![(false, 0), (false, 0), (false, 0), (false, -1), (false, 0)],
+        ]))
+    }
+
+    fn five_by_two_board() -> Board {
+        Board::new(make_map(vec![
+            vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
+            vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
+        ]))
+    }
+
     #[test]
     fn test_create_board() {
         let width = 5;
@@ -250,36 +268,7 @@ mod tests {
             return v.pop().unwrap();
         };
         let board = create_board(width, height, mines, rand);
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-            ],
-        ];
+        let expected_map = five_by_four_board().map;
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::NotReady);
     }
@@ -294,174 +283,28 @@ mod tests {
             return v.pop().unwrap();
         };
         let board = create_board(width, height, mines, rand);
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-                MapElement::Mine { open: false },
-                MapElement::Empty { open: false },
-            ],
-        ];
+        let expected_map = five_by_four_board().map;
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::NotReady);
     }
 
     #[test]
     fn test_numbers_on_board() {
-        let board = Board::new(
-            5,
-            4,
-            vec![
-                vec![
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-                vec![
-                    MapElement::Empty { open: false },
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-                vec![
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-                vec![
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                ],
-            ],
-        );
-        let board = numbers_on_board(board);
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-            ],
-            vec![
-                MapElement::Empty { open: false },
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-                MapElement::Number {
-                    open: false,
-                    count: 2,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    open: false,
-                    count: 1,
-                },
-            ],
-        ];
+        let board = numbers_on_board(five_by_four_board());
+        let expected_map = make_map(vec![
+            vec![(false, -1), (false, 2), (false, 1), (false, 0), (false, 0)],
+            vec![(false, 2), (false, -1), (false, 2), (false, 1), (false, 0)],
+            vec![(false, 1), (false, 2), (false, -1), (false, 2), (false, 1)],
+            vec![(false, 0), (false, 1), (false, 2), (false, -1), (false, 1)],
+        ]);
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
-    }
-
-    fn two_by_five_board() -> Board {
-        Board::new(
-            5,
-            2,
-            vec![
-                vec![
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-                vec![
-                    MapElement::Empty { open: false },
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-            ],
-        )
     }
 
     #[test]
     fn test_surrounding_points() {
         assert_eq!(
-            two_by_five_board().surrounding_points(&Point { x: 1, y: 0 }),
+            five_by_two_board().surrounding_points(&Point { x: 1, y: 0 }),
             vec![
                 Point { x: 0, y: 0 },
                 Point { x: 0, y: 1 },
@@ -474,148 +317,68 @@ mod tests {
 
     #[test]
     fn test_valid_open_item() {
-        let board = numbers_on_board(two_by_five_board());
+        let board = numbers_on_board(five_by_two_board());
         let board = board.open_item(&Point::new(1, 0));
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 2,
-                    open: true,
-                },
-                MapElement::Number {
-                    count: 1,
-                    open: false,
-                },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Number {
-                    count: 2,
-                    open: false,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 1,
-                    open: false,
-                },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-        ];
+        let expected_map = make_map(vec![
+            vec![(false, -1), (true, 2), (false, 1), (false, 0), (false, 0)],
+            vec![(false, 2), (false, -1), (false, 1), (false, 0), (false, 0)],
+        ]);
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
     }
 
     #[test]
     fn test_invalid_open_item() {
-        let board = numbers_on_board(two_by_five_board());
+        let board = numbers_on_board(five_by_two_board());
         let board = board.open_item(&Point::new(0, 0));
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 2,
-                    open: false,
-                },
-                MapElement::Number {
-                    count: 1,
-                    open: false,
-                },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-            vec![
-                MapElement::Number {
-                    count: 2,
-                    open: false,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 1,
-                    open: false,
-                },
-                MapElement::Empty { open: false },
-                MapElement::Empty { open: false },
-            ],
-        ];
+        let expected_map = make_map(vec![
+            vec![(false, -1), (false, 2), (false, 1), (false, 0), (false, 0)],
+            vec![(false, 2), (false, -1), (false, 1), (false, 0), (false, 0)],
+        ]);
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Failed);
     }
 
     #[test]
     fn test_cascade_open_item() {
-        let board = numbers_on_board(two_by_five_board());
-        let board = board.cascade_open_item(&Point::new(3, 1));
-        let board = board.unwrap();
-        let expected_map = vec![
-            vec![
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 2,
-                    open: false,
-                },
-                MapElement::Number {
-                    count: 1,
-                    open: true,
-                },
-                MapElement::Empty { open: true },
-                MapElement::Empty { open: true },
-            ],
-            vec![
-                MapElement::Number {
-                    count: 2,
-                    open: false,
-                },
-                MapElement::Mine { open: false },
-                MapElement::Number {
-                    count: 1,
-                    open: true,
-                },
-                MapElement::Empty { open: true },
-                MapElement::Empty { open: true },
-            ],
-        ];
+        let board = numbers_on_board(five_by_two_board());
+        let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
+        let expected_map = make_map(vec![
+            vec![(false, -1), (false, 2), (true, 1), (true, 0), (true, 0)],
+            vec![(false, 2), (false, -1), (true, 1), (true, 0), (true, 0)],
+        ]);
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
+    }
 
-        #[test]
-        fn test_win_board() {
-            let board = numbers_on_board(two_by_five_board());
-            let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
-            let board = board.cascade_open_item(&Point::new(0, 1)).unwrap();
-            let board = board.cascade_open_item(&Point::new(1, 0)).unwrap();
-            let expected_map = vec![
-                vec![
-                    MapElement::Mine { open: false },
-                    MapElement::Number {
-                        count: 2,
-                        open: true,
-                    },
-                    MapElement::Number {
-                        count: 1,
-                        open: true,
-                    },
-                    MapElement::Empty { open: true },
-                    MapElement::Empty { open: true },
-                ],
-                vec![
-                    MapElement::Number {
-                        count: 2,
-                        open: true,
-                    },
-                    MapElement::Mine { open: false },
-                    MapElement::Number {
-                        count: 1,
-                        open: true,
-                    },
-                    MapElement::Empty { open: true },
-                    MapElement::Empty { open: true },
-                ],
-            ];
-            assert_eq!(board.map, expected_map);
-            assert_eq!(board.state, BoardState::Won);
-        }
+    fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
+        map.iter()
+            .map(|row| {
+                row.iter()
+                    .map(|(open, count)| match count {
+                        -1 => MapElement::Mine { open: *open },
+                        0 => MapElement::Empty { open: *open },
+                        count => MapElement::Number {
+                            open: *open,
+                            count: *count,
+                        },
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_win_board() {
+        let board = numbers_on_board(five_by_two_board());
+        let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
+        let board = board.cascade_open_item(&Point::new(0, 1)).unwrap();
+        let board = board.cascade_open_item(&Point::new(1, 0)).unwrap();
+        let expected_map = make_map(vec![
+            vec![(false, -1), (true, 2), (true, 1), (true, 0), (true, 0)],
+            vec![(true, 2), (false, -1), (true, 1), (true, 0), (true, 0)],
+        ]);
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Won);
     }
 }
