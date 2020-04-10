@@ -51,19 +51,18 @@ pub enum Operation {
 
 fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
     let bytes = line.as_bytes();
-    if bytes.len() != 4 {
-        return None;
-    }
-    let op = bytes[0];
-    let x = coord_reverse_mapping(bytes[1]);
-    let y = coord_reverse_mapping(bytes[2]);
-    let p = Point { x, y };
-    if matches!(board.at(&p), None) {
-        None
-    } else if char::from(b'o') == char::from(op) {
-        Some(Operation::Open { point: p })
-    } else {
-        None
+    match bytes {
+        [b'o', x, y, b'\n'] =>  {
+            let x = coord_reverse_mapping(*x);
+            let y = coord_reverse_mapping(*y);
+            let p = Point { x, y };
+            if matches!(board.at(&p), Some(_)) {
+                Some(Operation::Open { point: p })
+            } else {
+                None
+            }
+        }
+        _ => None
     }
 }
 
@@ -186,11 +185,13 @@ mod tests {
         );
     }
 
+    #[test]
     fn test_process_line_out_of_bounds_argument() {
         let o = process_line(String::from("o34\n"), &two_by_five_board());
         assert_eq!(o, None);
     }
 
+    #[test]
     fn test_process_line_bad_arguments() {
         let o = process_line(String::from("o\n"), &two_by_five_board());
         assert_eq!(o, None);
