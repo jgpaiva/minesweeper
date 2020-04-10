@@ -35,7 +35,9 @@ fn main() {
             .expect("failed to read line");
         let op = process_line(line, &board);
         match op {
-            Some(Operation::Open { point }) => board = board.cascade_open_item(&point).unwrap_or(board),
+            Some(Operation::Open { point }) => {
+                board = board.cascade_open_item(&point).unwrap_or(board)
+            }
             _ => continue,
         }
     }
@@ -52,14 +54,17 @@ fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
     if bytes.len() != 4 {
         return None;
     }
-    //let op = bytes[0];
+    let op = bytes[0];
     let x = coord_reverse_mapping(bytes[1]);
     let y = coord_reverse_mapping(bytes[2]);
     let p = Point { x, y };
     if matches!(board.at(&p), None) {
-        return None;
+        None
+    } else if char::from(b'o') == char::from(op) {
+        Some(Operation::Open { point: p })
+    } else {
+        None
     }
-    Some(Operation::Open { point: p })
 }
 
 fn coord_reverse_mapping(c: u8) -> i32 {
