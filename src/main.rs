@@ -75,8 +75,7 @@ fn coord_reverse_mapping(c: u8) -> i32 {
     let v = mapping
         .iter()
         .enumerate()
-        .filter(|(_, &x)| c == x)
-        .next()
+        .find(|(_, &x)| c == x)
         .unwrap();
     v.0 as i32
 }
