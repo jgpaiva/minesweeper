@@ -23,10 +23,12 @@ impl Point {
 pub enum BoardState {
     NotReady,
     Playing,
+    Won,
     Failed,
 }
 pub struct Board {
     map: Vec<Vec<MapElement>>,
+    missing_points: i32,
     pub width: usize,
     pub height: usize,
     pub mines: usize,
@@ -34,6 +36,17 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn new(width: usize, height: usize, mines: usize, map: Vec<Vec<MapElement>>) -> Board {
+        Board {
+            width,
+            height,
+            mines,
+            missing_points: (width as i32) * (height as i32) - (mines as i32),
+            state: BoardState::NotReady,
+            map,
+        }
+    }
+
     pub fn at(self: &Self, p: &Point) -> Option<&MapElement> {
         let width = self.width as i32;
         let height = self.height as i32;
@@ -64,13 +77,14 @@ impl Board {
             width: self.width,
             height: self.height,
             mines: self.mines,
+            missing_points: self.missing_points,
             map,
             state: self.state.clone(),
         }
     }
 
-    pub fn open_item(self: &Self, point: Point) -> Board {
-        let board_point = self.at(&point);
+    pub fn open_item(self: &Self, p: &Point) -> Board {
+        let board_point = self.at(p);
 
         let newpoint = match board_point {
             Some(MapElement::Empty { open: false }) => Some(MapElement::Empty { open: true }),
@@ -82,15 +96,53 @@ impl Board {
         };
 
         match newpoint {
-            Some(newpoint) => self.replace(&point, newpoint),
+            Some(newpoint) => self.replace(p, newpoint),
             None => Board {
                 map: self.map.clone(),
                 width: self.width,
                 height: self.height,
                 mines: self.mines,
+                missing_points: self.missing_points,
                 state: BoardState::Failed,
             },
         }
+    }
+
+    pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
+        if matches!(self.at(p).unwrap(), MapElement::Mine{open:true} | MapElement::Empty{open:true} | MapElement::Number{open:true, ..})
+        {
+            return None;
+        }
+
+        let board = self.open_item(p);
+        if matches!(board.state, BoardState::Failed) {
+            return Some(board);
+        }
+
+        if matches!(board.at(&p).unwrap(), MapElement::Empty { open: true }) {
+            return Some(
+                board
+                    .surrounding_points(&p)
+                    .iter()
+                    .fold(board, |b: Board, p| b.cascade_open_item(&p).unwrap_or(b)),
+            );
+        }
+
+        Some(board)
+    }
+
+    pub fn surrounding_points(self: &Self, p: &Point) -> Vec<Point> {
+        [p.x - 1, p.x, p.x + 1]
+            .iter()
+            .flat_map(|&x| {
+                [p.y - 1, p.y, p.y + 1]
+                    .iter()
+                    .map(|&y| Point { x, y })
+                    .filter(|&Point { x, y }| p.x != x || p.y != y)
+                    .filter(|p| !matches!(self.at(p), None))
+                    .collect::<Vec<Point>>()
+            })
+            .collect()
     }
 }
 
@@ -127,27 +179,7 @@ pub fn create_board(
                 .collect()
         })
         .collect();
-    Board {
-        map,
-        width,
-        height,
-        mines,
-        state: BoardState::NotReady,
-    }
-}
-
-pub fn surrounding_points(p: &Point, board: &Board) -> Vec<Point> {
-    [p.x - 1, p.x, p.x + 1]
-        .iter()
-        .flat_map(|&x| {
-            [p.y - 1, p.y, p.y + 1]
-                .iter()
-                .map(|&y| Point { x, y })
-                .filter(|&Point { x, y }| p.x != x || p.y != y)
-                .filter(|p| !matches!(board.at(p), None))
-                .collect::<Vec<Point>>()
-        })
-        .collect()
+    Board::new(width, height, mines, map)
 }
 
 pub fn numbers_on_board(board: Board) -> Board {
@@ -159,7 +191,8 @@ pub fn numbers_on_board(board: Board) -> Board {
                     match board.at(&point) {
                         Some(MapElement::Mine { .. }) => MapElement::Mine { open: false },
                         Some(MapElement::Empty { .. }) => {
-                            let count = surrounding_points(&point, &board)
+                            let count = board
+                                .surrounding_points(&point)
                                 .iter()
                                 .map(|p| match board.at(p) {
                                     None => 0,
@@ -180,20 +213,10 @@ pub fn numbers_on_board(board: Board) -> Board {
         })
         .collect();
     Board {
-        height: board.height,
-        width: board.width,
-        mines: board.mines,
         map,
         state: BoardState::Playing,
+        ..board
     }
-}
-
-pub fn cascade_open_item(board: Board, point: Point) -> Board {
-    let board = board.open_item(point);
-    if matches!(board.state, BoardState::Failed) {
-        return board;
-    }
-    board
 }
 
 #[cfg(test)]
@@ -290,12 +313,11 @@ mod tests {
 
     #[test]
     fn test_numbers_on_board() {
-        let board = Board {
-            height: 4,
-            width: 5,
-            mines: 4,
-            state: BoardState::NotReady,
-            map: vec![
+        let board = Board::new(
+            5,
+            4,
+            4,
+            vec![
                 vec![
                     MapElement::Mine { open: false },
                     MapElement::Empty { open: false },
@@ -325,7 +347,7 @@ mod tests {
                     MapElement::Empty { open: false },
                 ],
             ],
-        };
+        );
         let board = numbers_on_board(board);
         let expected_map = vec![
             vec![
@@ -398,12 +420,11 @@ mod tests {
     }
 
     fn two_by_five_board() -> Board {
-        Board {
-            height: 2,
-            width: 5,
-            mines: 4,
-            state: BoardState::Playing,
-            map: vec![
+        Board::new(
+            5,
+            2,
+            4,
+            vec![
                 vec![
                     MapElement::Mine { open: false },
                     MapElement::Empty { open: false },
@@ -419,13 +440,13 @@ mod tests {
                     MapElement::Empty { open: false },
                 ],
             ],
-        }
+        )
     }
 
     #[test]
     fn test_surrounding_points() {
         assert_eq!(
-            surrounding_points(&Point { x: 1, y: 0 }, &two_by_five_board()),
+            two_by_five_board().surrounding_points(&Point { x: 1, y: 0 }),
             vec![
                 Point { x: 0, y: 0 },
                 Point { x: 0, y: 1 },
@@ -439,7 +460,7 @@ mod tests {
     #[test]
     fn test_valid_open_item() {
         let board = numbers_on_board(two_by_five_board());
-        let board = board.open_item(Point::new(1, 0));
+        let board = board.open_item(&Point::new(1, 0));
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
@@ -475,7 +496,7 @@ mod tests {
     #[test]
     fn test_invalid_open_item() {
         let board = numbers_on_board(two_by_five_board());
-        let board = board.open_item(Point::new(0, 0));
+        let board = board.open_item(&Point::new(0, 0));
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
@@ -511,17 +532,18 @@ mod tests {
     #[test]
     fn test_cascade_open_item() {
         let board = numbers_on_board(two_by_five_board());
-        let board = cascade_open_item(board, Point::new(1, 3));
+        let board = board.cascade_open_item(&Point::new(3, 1));
+        let board = board.unwrap();
         let expected_map = vec![
             vec![
                 MapElement::Mine { open: false },
                 MapElement::Number {
                     count: 2,
-                    open: true,
+                    open: false,
                 },
                 MapElement::Number {
                     count: 1,
-                    open: false,
+                    open: true,
                 },
                 MapElement::Empty { open: true },
                 MapElement::Empty { open: true },
@@ -540,7 +562,7 @@ mod tests {
                 MapElement::Empty { open: true },
             ],
         ];
-        //assert_eq!(board.map, expected_map);
-        //assert_eq!(board.state, BoardState::Playing);
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
     }
 }
