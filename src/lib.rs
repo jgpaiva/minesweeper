@@ -1,8 +1,18 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum MapElement {
-    Mine { open: bool },
-    Empty { open: bool },
-    Number { open: bool, count: i32 },
+    Mine {
+        open: bool,
+        flagged: bool,
+    },
+    Empty {
+        open: bool,
+        flagged: bool,
+    },
+    Number {
+        open: bool,
+        count: i32,
+        flagged: bool,
+    },
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -106,10 +116,21 @@ impl Board {
         let board_point = self.at(p);
 
         let newpoint = match board_point {
-            Some(MapElement::Empty { open: false }) => Some(MapElement::Empty { open: true }),
-            Some(MapElement::Number { open: false, count }) => Some(MapElement::Number {
+            Some(MapElement::Empty {
+                open: false,
+                flagged: false,
+            }) => Some(MapElement::Empty {
+                open: true,
+                flagged: false,
+            }),
+            Some(MapElement::Number {
+                open: false,
+                count,
+                flagged: false,
+            }) => Some(MapElement::Number {
                 open: true,
                 count: *count,
+                flagged: false,
             }),
             _ => None,
         };
@@ -128,17 +149,28 @@ impl Board {
     }
 
     pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
-        if matches!(self.at(p).unwrap(), MapElement::Mine{open:true} | MapElement::Empty{open:true} | MapElement::Number{open:true, ..})
-        {
-            return None;
-        }
+        match self.at(p).unwrap() {
+            MapElement::Mine { open: true, .. }
+            | MapElement::Empty { open: true, .. }
+            | MapElement::Number { open: true, .. }
+            | MapElement::Mine { flagged: true, .. }
+            | MapElement::Empty { flagged: true, .. }
+            | MapElement::Number { flagged: true, .. } => return None,
+            _ => (),
+        };
 
         let board = self.open_item(p);
         if matches!(board.state, BoardState::Failed) {
             return Some(board);
         }
 
-        if matches!(board.at(&p).unwrap(), MapElement::Empty { open: true }) {
+        if matches!(
+            board.at(&p).unwrap(),
+            MapElement::Empty {
+                open: true,
+                flagged: false
+            }
+        ) {
             return Some(
                 board
                     .surrounding_points(&p)
@@ -190,9 +222,15 @@ pub fn create_board(
             (0..width)
                 .map(|x| {
                     if points.contains(&Point::new(x, y)) {
-                        MapElement::Mine { open: false }
+                        MapElement::Mine {
+                            open: false,
+                            flagged: false,
+                        }
                     } else {
-                        MapElement::Empty { open: false }
+                        MapElement::Empty {
+                            open: false,
+                            flagged: false,
+                        }
                     }
                 })
                 .collect()
@@ -208,8 +246,11 @@ pub fn numbers_on_board(board: Board) -> Board {
                 .map(|x| {
                     let point = Point::new(x, y);
                     match board.at(&point) {
-                        Some(MapElement::Mine { .. }) => MapElement::Mine { open: false },
-                        Some(MapElement::Empty { .. }) => {
+                        Some(MapElement::Mine { flagged, .. }) => MapElement::Mine {
+                            open: false,
+                            flagged: *flagged,
+                        },
+                        Some(MapElement::Empty { flagged, .. }) => {
                             let count = board
                                 .surrounding_points(&point)
                                 .iter()
@@ -221,8 +262,15 @@ pub fn numbers_on_board(board: Board) -> Board {
                                 })
                                 .sum();
                             match count {
-                                0 => MapElement::Empty { open: false },
-                                _ => MapElement::Number { open: false, count },
+                                0 => MapElement::Empty {
+                                    open: false,
+                                    flagged: *flagged,
+                                },
+                                _ => MapElement::Number {
+                                    open: false,
+                                    flagged: *flagged,
+                                    count,
+                                },
                             }
                         }
                         _ => unreachable!(),
@@ -239,10 +287,34 @@ pub fn numbers_on_board(board: Board) -> Board {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod libtests {
     use super::*;
 
-    fn five_by_four_board() -> Board {
+    fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
+        map.iter()
+            .map(|row| {
+                row.iter()
+                    .map(|(open, count)| match count {
+                        -1 => MapElement::Mine {
+                            open: *open,
+                            flagged: false,
+                        },
+                        0 => MapElement::Empty {
+                            open: *open,
+                            flagged: false,
+                        },
+                        count => MapElement::Number {
+                            open: *open,
+                            count: *count,
+                            flagged: false,
+                        },
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    pub fn five_by_four_board() -> Board {
         Board::new(make_map(vec![
             vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
             vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
@@ -251,7 +323,7 @@ mod tests {
         ]))
     }
 
-    fn five_by_two_board() -> Board {
+    pub fn five_by_two_board() -> Board {
         Board::new(make_map(vec![
             vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
             vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
@@ -349,23 +421,6 @@ mod tests {
         ]);
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
-    }
-
-    fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
-        map.iter()
-            .map(|row| {
-                row.iter()
-                    .map(|(open, count)| match count {
-                        -1 => MapElement::Mine { open: *open },
-                        0 => MapElement::Empty { open: *open },
-                        count => MapElement::Number {
-                            open: *open,
-                            count: *count,
-                        },
-                    })
-                    .collect()
-            })
-            .collect()
     }
 
     #[test]

@@ -52,7 +52,7 @@ pub enum Operation {
 fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
     let bytes = line.as_bytes();
     match bytes {
-        [b'o', x, y, b'\n'] =>  {
+        [b'o', x, y, b'\n'] => {
             let x = coord_reverse_mapping(*x);
             let y = coord_reverse_mapping(*y);
             let p = Point { x, y };
@@ -62,7 +62,7 @@ fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
                 None
             }
         }
-        _ => None
+        _ => None,
     }
 }
 
@@ -72,11 +72,7 @@ fn coord_reverse_mapping(c: u8) -> i32 {
     mapping.extend((b'a'..=b'z').map(char::from));
     let c = char::from(c);
 
-    let v = mapping
-        .iter()
-        .enumerate()
-        .find(|(_, &x)| c == x)
-        .unwrap();
+    let v = mapping.iter().enumerate().find(|(_, &x)| c == x).unwrap();
     v.0 as i32
 }
 
@@ -101,28 +97,28 @@ fn colorized_print_map(board: &cargotest::Board) {
         print!("{} ", item);
     }
     println!();
-    let is_done = matches!(board.state, BoardState::Failed | BoardState:: Won);
+    let is_done = matches!(board.state, BoardState::Failed | BoardState::Won);
     for y in 0..board.height {
         print!("{} ", mapping[y]);
         for x in 0..board.width {
             let x = x as i32;
             let y = y as i32;
             let c = match board.at(&cargotest::Point { x, y }) {
-                Some(MapElement::Mine { open }) => {
+                Some(MapElement::Mine { open, .. }) => {
                     if is_done || *open {
                         " ".on_red()
                     } else {
                         " ".on_yellow()
                     }
                 }
-                Some(MapElement::Empty { open }) => {
+                Some(MapElement::Empty { open, .. }) => {
                     if is_done || *open {
                         " ".on_bright_white()
                     } else {
                         " ".on_yellow()
                     }
                 }
-                Some(MapElement::Number { open, count }) => {
+                Some(MapElement::Number { open, count, .. }) => {
                     if is_done || *open {
                         format!("{}", count).black().on_bright_cyan()
                     } else {
@@ -149,30 +145,41 @@ mod tests {
     use super::*;
     use cargotest::*;
 
-    fn five_by_two_board() -> Board {
-        Board::new(
-            vec![
-                vec![
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-                vec![
-                    MapElement::Empty { open: false },
-                    MapElement::Mine { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                    MapElement::Empty { open: false },
-                ],
-            ],
-        )
+    // TODO: I'm a dummy and couldn't figure out how to import this function and the next one from lib.rs
+    fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
+        map.iter()
+            .map(|row| {
+                row.iter()
+                    .map(|(open, count)| match count {
+                        -1 => MapElement::Mine {
+                            open: *open,
+                            flagged: false,
+                        },
+                        0 => MapElement::Empty {
+                            open: *open,
+                            flagged: false,
+                        },
+                        count => MapElement::Number {
+                            open: *open,
+                            count: *count,
+                            flagged: false,
+                        },
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    pub fn five_by_two_board() -> Board {
+        Board::new(make_map(vec![
+            vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
+            vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
+        ]))
     }
 
     #[test]
     fn test_process_line() {
-        let o = process_line(String::from("o01\n"), &five_by_two_board());
+        let o = process_line(String::from("o01\n"), &tests::five_by_two_board());
         assert_eq!(
             o,
             Some(Operation::Open {
@@ -183,13 +190,13 @@ mod tests {
 
     #[test]
     fn test_process_line_out_of_bounds_argument() {
-        let o = process_line(String::from("o34\n"), &five_by_two_board());
+        let o = process_line(String::from("o34\n"), &tests::five_by_two_board());
         assert_eq!(o, None);
     }
 
     #[test]
     fn test_process_line_bad_arguments() {
-        let o = process_line(String::from("o\n"), &five_by_two_board());
+        let o = process_line(String::from("o\n"), &tests::five_by_two_board());
         assert_eq!(o, None);
     }
 }
