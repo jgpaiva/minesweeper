@@ -101,7 +101,7 @@ fn colorized_print_map(board: &cargotest::Board) {
         print!("{} ", item);
     }
     println!();
-    let is_failed = matches!(board.state, BoardState::Failed);
+    let is_done = matches!(board.state, BoardState::Failed | BoardState:: Won);
     for y in 0..board.height {
         print!("{} ", mapping[y]);
         for x in 0..board.width {
@@ -109,21 +109,21 @@ fn colorized_print_map(board: &cargotest::Board) {
             let y = y as i32;
             let c = match board.at(&cargotest::Point { x, y }) {
                 Some(MapElement::Mine { open }) => {
-                    if is_failed || *open {
+                    if is_done || *open {
                         " ".on_red()
                     } else {
                         " ".on_yellow()
                     }
                 }
                 Some(MapElement::Empty { open }) => {
-                    if is_failed || *open {
+                    if is_done || *open {
                         " ".on_bright_white()
                     } else {
                         " ".on_yellow()
                     }
                 }
                 Some(MapElement::Number { open, count }) => {
-                    if is_failed || *open {
+                    if is_done || *open {
                         format!("{}", count).black().on_bright_cyan()
                     } else {
                         " ".on_yellow()
