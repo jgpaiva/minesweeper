@@ -117,98 +117,68 @@ impl Board {
     }
 
     pub fn flag_item(self: &Self, p: &Point) -> Board {
-        let board_point = self.at(p);
-
-        let newpoint = match board_point {
-            Some(Number {
-                state: Closed,
-                count,
-            }) => Some(Number {
-                state: Flagged,
-                count: *count,
-            }),
-            Some(Mine { state: Closed }) => Some(Mine { state: Flagged }),
-            Some(Number {
-                state: Flagged,
-                count,
-            }) => Some(Number {
-                state: Closed,
-                count: *count,
-            }),
-            Some(Mine { state: Flagged }) => Some(Mine { state: Closed }),
-            _ => None,
-        };
-
-        match newpoint {
-            Some(newpoint) => self.replace(p, newpoint),
-            None => Board {
-                map: self.map.clone(),
-                width: self.width,
-                height: self.height,
-                mines: self.mines,
-                missing_points: self.missing_points,
-                state: self.state.clone(),
-            },
+        match self.at(p) {
+            Some(Mine { state }) => self.replace(
+                p,
+                Mine {
+                    state: match *state {
+                        Closed => Flagged,
+                        Flagged => Closed,
+                        Open => Open,
+                    },
+                },
+            ),
+            Some(Number { state, count }) => self.replace(
+                p,
+                Number {
+                    state: match *state {
+                        Closed => Flagged,
+                        Flagged => Closed,
+                        Open => Open,
+                    },
+                    count: *count,
+                },
+            ),
+            None => unreachable!(),
         }
     }
 
-    pub fn open_item(self: &Self, p: &Point) -> Board {
-        let board_point = self.at(p);
-
-        let newpoint = match board_point {
-            Some(Number {
+    pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
+        match self.at(p).unwrap() {
+            Number { state: Open, .. }
+            | Mine { state: Flagged, .. }
+            | Number { state: Flagged, .. } => None,
+            Number {
                 state: Closed,
                 count,
-            }) => Some(Number {
-                state: Open,
-                count: *count,
-            }),
-            _ => None,
-        };
-
-        match newpoint {
-            Some(newpoint) => self.replace(p, newpoint),
-            None => Board {
+            } => {
+                let board = self.replace(
+                    p,
+                    Number {
+                        state: Open,
+                        count: *count,
+                    },
+                );
+                if *count == 0 {
+                    Some(
+                        board
+                            .surrounding_points(&p)
+                            .iter()
+                            .fold(board, |b: Board, p| b.cascade_open_item(&p).unwrap_or(b)),
+                    )
+                } else {
+                    Some(board)
+                }
+            }
+            Mine { state: Open } | Mine { state: Closed } => Some(Board {
                 map: self.map.clone(),
                 width: self.width,
                 height: self.height,
                 mines: self.mines,
                 missing_points: self.missing_points,
                 state: BoardState::Failed,
-            },
+            }),
         }
-    }
-
-    pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
-        match self.at(p).unwrap() {
-            Mine { state: Open, .. }
-            | Number { state: Open, .. }
-            | Mine { state: Flagged, .. }
-            | Number { state: Flagged, .. } => return None,
-            _ => (),
-        };
-
-        let board = self.open_item(p);
-        if matches!(board.state, BoardState::Failed) {
-            return Some(board);
-        }
-
-        if matches!(
-            board.at(&p).unwrap(),
-            Number {
-                state: Open,
-                count: 0,
-            }
-        ) {
-            return Some(
-                board
-                    .surrounding_points(&p)
-                    .iter()
-                    .fold(board, |b: Board, p| b.cascade_open_item(&p).unwrap_or(b)),
-            );
-        }
-
-        Some(board)
     }
 
     pub fn surrounding_points(self: &Self, p: &Point) -> Vec<Point> {
@@ -219,7 +189,7 @@ impl Board {
                     .iter()
                     .map(|&y| Point { x, y })
                     .filter(|&Point { x, y }| p.x != x || p.y != y)
-                    .filter(|p| !matches!(self.at(p), None))
+                    .filter(|p| self.at(p).is_some())
                     .collect::<Vec<Point>>()
             })
             .collect()
@@ -271,11 +241,11 @@ pub fn numbers_on_board(board: Board) -> Board {
             (0..board.width)
                 .map(|x| {
                     let point = Point::new(x, y);
-                    match board.at(&point) {
-                        Some(Mine { state }) => Mine {
+                    match board.at(&point).unwrap() {
+                        Mine { state } => Mine {
                             state: state.clone(),
                         },
-                        Some(Number { count: 0, state }) => {
+                        Number { count: 0, state } => {
                             let count = board
                                 .surrounding_points(&point)
                                 .iter()
@@ -462,30 +432,6 @@ pub mod tests {
     }
 
     #[test]
-    fn test_valid_open_item() {
-        let board = numbers_on_board(five_by_two_board());
-        let board = board.open_item(&Point::new(1, 0));
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("COCCC"), String::from("CCCCC")],
-        );
-        assert_eq!(board.map, expected_map);
-        assert_eq!(board.state, BoardState::Playing);
-    }
-
-    #[test]
-    fn test_invalid_open_item() {
-        let board = numbers_on_board(five_by_two_board());
-        let board = board.open_item(&Point::new(0, 0));
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCCCC"), String::from("CCCCC")],
-        );
-        assert_eq!(board.map, expected_map);
-        assert_eq!(board.state, BoardState::Failed);
-    }
-
-    #[test]
     fn test_cascade_open_item() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
@@ -539,11 +485,11 @@ pub mod tests {
     #[test]
     fn test_flagging_open_does_noting() {
         let board = numbers_on_board(five_by_two_board());
-        let board = board.open_item(&Point::new(3, 1));
-        let board = board.flag_item(&Point::new(3, 1));
+        let board = board.cascade_open_item(&Point::new(2, 0)).unwrap();
+        let board = board.flag_item(&Point::new(2, 0));
         let expected_map = make_map(
             vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCCCC"), String::from("CCCOC")],
+            vec![String::from("CCOCC"), String::from("CCCCC")],
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
