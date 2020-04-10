@@ -36,7 +36,13 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new(width: usize, height: usize, mines: usize, map: Vec<Vec<MapElement>>) -> Board {
+    pub fn new(width: usize, height: usize, map: Vec<Vec<MapElement>>) -> Board {
+        let mines = map
+            .iter()
+            .flat_map(|x| x.iter())
+            .filter(|x| matches!(x, MapElement::Mine{..}))
+            .map(|_| 1)
+            .sum();
         Board {
             width,
             height,
@@ -59,7 +65,9 @@ impl Board {
         }
     }
 
-    pub fn replace(self: &Self, p: &Point, el: MapElement) -> Board {
+    fn replace(self: &Self, p: &Point, el: MapElement) -> Board {
+        let was_closed = matches!(self.at(p), Some(MapElement::Empty{open: false,..}) | Some(MapElement::Number{open:false,..}))
+            && matches!(el, MapElement::Empty{open: true,..}| MapElement::Number{open:true,..});
         let map = (0..self.height)
             .map(|y| {
                 (0..self.width)
@@ -73,13 +81,22 @@ impl Board {
                     .collect()
             })
             .collect();
+        let missing_points = if was_closed {
+            self.missing_points - 1
+        } else {
+            self.missing_points
+        };
         Board {
             width: self.width,
             height: self.height,
             mines: self.mines,
-            missing_points: self.missing_points,
+            missing_points,
             map,
-            state: self.state.clone(),
+            state: if missing_points == 0 {
+                BoardState::Won
+            } else {
+                self.state.clone()
+            },
         }
     }
 
@@ -179,7 +196,7 @@ pub fn create_board(
                 .collect()
         })
         .collect();
-    Board::new(width, height, mines, map)
+    Board::new(width, height, map)
 }
 
 pub fn numbers_on_board(board: Board) -> Board {
@@ -316,7 +333,6 @@ mod tests {
         let board = Board::new(
             5,
             4,
-            4,
             vec![
                 vec![
                     MapElement::Mine { open: false },
@@ -423,7 +439,6 @@ mod tests {
         Board::new(
             5,
             2,
-            4,
             vec![
                 vec![
                     MapElement::Mine { open: false },
@@ -564,5 +579,43 @@ mod tests {
         ];
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
+
+        #[test]
+        fn test_win_board() {
+            let board = numbers_on_board(two_by_five_board());
+            let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
+            let board = board.cascade_open_item(&Point::new(0, 1)).unwrap();
+            let board = board.cascade_open_item(&Point::new(1, 0)).unwrap();
+            let expected_map = vec![
+                vec![
+                    MapElement::Mine { open: false },
+                    MapElement::Number {
+                        count: 2,
+                        open: true,
+                    },
+                    MapElement::Number {
+                        count: 1,
+                        open: true,
+                    },
+                    MapElement::Empty { open: true },
+                    MapElement::Empty { open: true },
+                ],
+                vec![
+                    MapElement::Number {
+                        count: 2,
+                        open: true,
+                    },
+                    MapElement::Mine { open: false },
+                    MapElement::Number {
+                        count: 1,
+                        open: true,
+                    },
+                    MapElement::Empty { open: true },
+                    MapElement::Empty { open: true },
+                ],
+            ];
+            assert_eq!(board.map, expected_map);
+            assert_eq!(board.state, BoardState::Won);
+        }
     }
 }

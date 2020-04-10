@@ -83,9 +83,9 @@ fn coord_reverse_mapping(c: u8) -> i32 {
 fn print_board_state(board: &cargotest::Board) {
     print!("Board is currently ");
     match board.state {
-        BoardState::Won => print!("{}", "WON!".green()),
+        BoardState::Won => print!("{}", "🎉🎉  WON! 🎉🎉".green()),
         BoardState::Playing => print!("{}", "in play".green()),
-        BoardState::Failed => print!("{}", "failed".red()),
+        BoardState::Failed => print!("{}", "☠️  FAILED ☠️".red()),
         _ => unreachable!(),
     }
     println!();
@@ -153,7 +153,6 @@ mod tests {
         Board::new(
             5,
             2,
-            4,
             vec![
                 vec![
                     MapElement::Mine { open: false },
