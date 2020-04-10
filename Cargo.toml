@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 rand = "^0.6.0"
 colored = "1.9.3"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"

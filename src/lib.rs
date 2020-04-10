@@ -1,19 +1,25 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum MapElement {
     Mine {
-        open: bool,
-        flagged: bool,
-    },
-    Empty {
-        open: bool,
-        flagged: bool,
+        state: MapElementCellState,
     },
     Number {
-        open: bool,
+        state: MapElementCellState,
         count: i32,
-        flagged: bool,
     },
 }
+#[derive(Debug, PartialEq, Clone)]
+pub enum MapElementCellState {
+    Closed,
+    Open,
+    Flagged,
+}
+
+use MapElement::Mine;
+use MapElement::Number;
+use MapElementCellState::Closed;
+use MapElementCellState::Flagged;
+use MapElementCellState::Open;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct Point {
@@ -50,9 +56,8 @@ impl Board {
         let mines = map
             .iter()
             .flat_map(|x| x.iter())
-            .filter(|x| matches!(x, MapElement::Mine{..}))
-            .map(|_| 1)
-            .sum();
+            .filter(|x| matches!(x, Mine{..}))
+            .count();
         let width = map.iter().next().unwrap().len();
         let height = map.len();
         Board {
@@ -78,8 +83,7 @@ impl Board {
     }
 
     fn replace(self: &Self, p: &Point, el: MapElement) -> Board {
-        let was_closed = matches!(self.at(p), Some(MapElement::Empty{open: false,..}) | Some(MapElement::Number{open:false,..}))
-            && matches!(el, MapElement::Empty{open: true,..}| MapElement::Number{open:true,..});
+        let was_closed = matches!(self.at(p), Some(Number { state: Closed, .. }));
         let map = (0..self.height)
             .map(|y| {
                 (0..self.width)
@@ -112,25 +116,52 @@ impl Board {
         }
     }
 
+    pub fn flag_item(self: &Self, p: &Point) -> Board {
+        let board_point = self.at(p);
+
+        let newpoint = match board_point {
+            Some(Number {
+                state: Closed,
+                count,
+            }) => Some(Number {
+                state: Flagged,
+                count: *count,
+            }),
+            Some(Mine { state: Closed }) => Some(Mine { state: Flagged }),
+            Some(Number {
+                state: Flagged,
+                count,
+            }) => Some(Number {
+                state: Closed,
+                count: *count,
+            }),
+            Some(Mine { state: Flagged }) => Some(Mine { state: Closed }),
+            _ => None,
+        };
+
+        match newpoint {
+            Some(newpoint) => self.replace(p, newpoint),
+            None => Board {
+                map: self.map.clone(),
+                width: self.width,
+                height: self.height,
+                mines: self.mines,
+                missing_points: self.missing_points,
+                state: self.state.clone(),
+            },
+        }
+    }
+
     pub fn open_item(self: &Self, p: &Point) -> Board {
         let board_point = self.at(p);
 
         let newpoint = match board_point {
-            Some(MapElement::Empty {
-                open: false,
-                flagged: false,
-            }) => Some(MapElement::Empty {
-                open: true,
-                flagged: false,
-            }),
-            Some(MapElement::Number {
-                open: false,
+            Some(Number {
+                state: Closed,
                 count,
-                flagged: false,
-            }) => Some(MapElement::Number {
-                open: true,
+            }) => Some(Number {
+                state: Open,
                 count: *count,
-                flagged: false,
             }),
             _ => None,
         };
@@ -150,12 +181,10 @@ impl Board {
 
     pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
         match self.at(p).unwrap() {
-            MapElement::Mine { open: true, .. }
-            | MapElement::Empty { open: true, .. }
-            | MapElement::Number { open: true, .. }
-            | MapElement::Mine { flagged: true, .. }
-            | MapElement::Empty { flagged: true, .. }
-            | MapElement::Number { flagged: true, .. } => return None,
+            Mine { state: Open, .. }
+            | Number { state: Open, .. }
+            | Mine { state: Flagged, .. }
+            | Number { state: Flagged, .. } => return None,
             _ => (),
         };
 
@@ -166,9 +195,9 @@ impl Board {
 
         if matches!(
             board.at(&p).unwrap(),
-            MapElement::Empty {
-                open: true,
-                flagged: false
+            Number {
+                state: Open,
+                count: 0,
             }
         ) {
             return Some(
@@ -222,14 +251,11 @@ pub fn create_board(
             (0..width)
                 .map(|x| {
                     if points.contains(&Point::new(x, y)) {
-                        MapElement::Mine {
-                            open: false,
-                            flagged: false,
-                        }
+                        Mine { state: Closed }
                     } else {
-                        MapElement::Empty {
-                            open: false,
-                            flagged: false,
+                        Number {
+                            state: Closed,
+                            count: 0,
                         }
                     }
                 })
@@ -246,31 +272,18 @@ pub fn numbers_on_board(board: Board) -> Board {
                 .map(|x| {
                     let point = Point::new(x, y);
                     match board.at(&point) {
-                        Some(MapElement::Mine { flagged, .. }) => MapElement::Mine {
-                            open: false,
-                            flagged: *flagged,
+                        Some(Mine { state }) => Mine {
+                            state: state.clone(),
                         },
-                        Some(MapElement::Empty { flagged, .. }) => {
+                        Some(Number { count: 0, state }) => {
                             let count = board
                                 .surrounding_points(&point)
                                 .iter()
-                                .map(|p| match board.at(p) {
-                                    None => 0,
-                                    Some(MapElement::Mine { .. }) => 1,
-                                    Some(MapElement::Empty { .. }) => 0,
-                                    _ => 0,
-                                })
-                                .sum();
-                            match count {
-                                0 => MapElement::Empty {
-                                    open: false,
-                                    flagged: *flagged,
-                                },
-                                _ => MapElement::Number {
-                                    open: false,
-                                    flagged: *flagged,
-                                    count,
-                                },
+                                .filter(|p| matches!(board.at(p), Some(Mine { .. })))
+                                .count() as i32;
+                            Number {
+                                state: state.clone(),
+                                count,
                             }
                         }
                         _ => unreachable!(),
@@ -287,26 +300,38 @@ pub fn numbers_on_board(board: Board) -> Board {
 }
 
 #[cfg(test)]
-pub mod libtests {
+pub mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
-    fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
+    fn state_from_bytes(state: u8) -> MapElementCellState {
+        match state {
+            b'O' => Open,
+            b'C' => Closed,
+            b'F' => Flagged,
+            _ => unreachable!(),
+        }
+    }
+
+    fn count_from_bytes(c: u8) -> i32 {
+        (c as i32) - (b'0' as i32)
+    }
+
+    fn make_map(map: Vec<String>, state: Vec<String>) -> Vec<Vec<MapElement>> {
         map.iter()
-            .map(|row| {
-                row.iter()
-                    .map(|(open, count)| match count {
-                        -1 => MapElement::Mine {
-                            open: *open,
-                            flagged: false,
+            .zip(state)
+            .map(|(map_row, state_row)| {
+                map_row
+                    .as_bytes()
+                    .iter()
+                    .zip(state_row.as_bytes())
+                    .map(|(row_el, state_el)| match row_el {
+                        b'X' => Mine {
+                            state: state_from_bytes(*state_el),
                         },
-                        0 => MapElement::Empty {
-                            open: *open,
-                            flagged: false,
-                        },
-                        count => MapElement::Number {
-                            open: *open,
-                            count: *count,
-                            flagged: false,
+                        _ => Number {
+                            state: state_from_bytes(*state_el),
+                            count: count_from_bytes(*row_el),
                         },
                     })
                     .collect()
@@ -314,20 +339,61 @@ pub mod libtests {
             .collect()
     }
 
+    #[test]
+    fn test_make_map() {
+        let map = make_map(
+            vec![String::from("00"), String::from("22"), String::from("XX")],
+            vec![String::from("OC"), String::from("FC"), String::from("CF")],
+        );
+        let expected_map = vec![
+            vec![
+                Number {
+                    count: 0,
+                    state: Open,
+                },
+                Number {
+                    count: 0,
+                    state: Closed,
+                },
+            ],
+            vec![
+                Number {
+                    count: 2,
+                    state: Flagged,
+                },
+                Number {
+                    count: 2,
+                    state: Closed,
+                },
+            ],
+            vec![Mine { state: Closed }, Mine { state: Flagged }],
+        ];
+
+        assert_eq!(map, expected_map);
+    }
+
     pub fn five_by_four_board() -> Board {
-        Board::new(make_map(vec![
-            vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
-            vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
-            vec![(false, 0), (false, 0), (false, -1), (false, 0), (false, 0)],
-            vec![(false, 0), (false, 0), (false, 0), (false, -1), (false, 0)],
-        ]))
+        Board::new(make_map(
+            vec![
+                String::from("X0000"),
+                String::from("0X000"),
+                String::from("00X00"),
+                String::from("000X0"),
+            ],
+            vec![
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+            ],
+        ))
     }
 
     pub fn five_by_two_board() -> Board {
-        Board::new(make_map(vec![
-            vec![(false, -1), (false, 0), (false, 0), (false, 0), (false, 0)],
-            vec![(false, 0), (false, -1), (false, 0), (false, 0), (false, 0)],
-        ]))
+        Board::new(make_map(
+            vec![String::from("X0000"), String::from("0X000")],
+            vec![String::from("CCCCC"), String::from("CCCCC")],
+        ))
     }
 
     #[test]
@@ -363,12 +429,20 @@ pub mod libtests {
     #[test]
     fn test_numbers_on_board() {
         let board = numbers_on_board(five_by_four_board());
-        let expected_map = make_map(vec![
-            vec![(false, -1), (false, 2), (false, 1), (false, 0), (false, 0)],
-            vec![(false, 2), (false, -1), (false, 2), (false, 1), (false, 0)],
-            vec![(false, 1), (false, 2), (false, -1), (false, 2), (false, 1)],
-            vec![(false, 0), (false, 1), (false, 2), (false, -1), (false, 1)],
-        ]);
+        let expected_map = make_map(
+            vec![
+                String::from("X2100"),
+                String::from("2X210"),
+                String::from("12X21"),
+                String::from("012X1"),
+            ],
+            vec![
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+                String::from("CCCCC"),
+            ],
+        );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
     }
@@ -391,10 +465,10 @@ pub mod libtests {
     fn test_valid_open_item() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.open_item(&Point::new(1, 0));
-        let expected_map = make_map(vec![
-            vec![(false, -1), (true, 2), (false, 1), (false, 0), (false, 0)],
-            vec![(false, 2), (false, -1), (false, 1), (false, 0), (false, 0)],
-        ]);
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("COCCC"), String::from("CCCCC")],
+        );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
     }
@@ -403,10 +477,10 @@ pub mod libtests {
     fn test_invalid_open_item() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.open_item(&Point::new(0, 0));
-        let expected_map = make_map(vec![
-            vec![(false, -1), (false, 2), (false, 1), (false, 0), (false, 0)],
-            vec![(false, 2), (false, -1), (false, 1), (false, 0), (false, 0)],
-        ]);
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("CCCCC"), String::from("CCCCC")],
+        );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Failed);
     }
@@ -415,10 +489,10 @@ pub mod libtests {
     fn test_cascade_open_item() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
-        let expected_map = make_map(vec![
-            vec![(false, -1), (false, 2), (true, 1), (true, 0), (true, 0)],
-            vec![(false, 2), (false, -1), (true, 1), (true, 0), (true, 0)],
-        ]);
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("CCOOO"), String::from("CCOOO")],
+        );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
     }
@@ -429,11 +503,49 @@ pub mod libtests {
         let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
         let board = board.cascade_open_item(&Point::new(0, 1)).unwrap();
         let board = board.cascade_open_item(&Point::new(1, 0)).unwrap();
-        let expected_map = make_map(vec![
-            vec![(false, -1), (true, 2), (true, 1), (true, 0), (true, 0)],
-            vec![(true, 2), (false, -1), (true, 1), (true, 0), (true, 0)],
-        ]);
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("COOOO"), String::from("OCOOO")],
+        );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Won);
+    }
+
+    #[test]
+    fn test_flag() {
+        let board = numbers_on_board(five_by_two_board());
+        let board = board.flag_item(&Point::new(3, 1));
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("CCCCC"), String::from("CCCFC")],
+        );
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
+    }
+
+    #[test]
+    fn test_flagging_again_unflags() {
+        let board = numbers_on_board(five_by_two_board());
+        let board = board.flag_item(&Point::new(3, 1));
+        let board = board.flag_item(&Point::new(3, 1));
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("CCCCC"), String::from("CCCCC")],
+        );
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
+    }
+
+    #[test]
+    fn test_flagging_open_does_noting() {
+        let board = numbers_on_board(five_by_two_board());
+        let board = board.open_item(&Point::new(3, 1));
+        let board = board.flag_item(&Point::new(3, 1));
+        let expected_map = make_map(
+            vec![String::from("X2100"), String::from("2X100")],
+            vec![String::from("CCCCC"), String::from("CCCOC")],
+        );
+        assert_eq!(board.map, expected_map);
+        assert_eq!(board.state, BoardState::Playing);
     }
 }

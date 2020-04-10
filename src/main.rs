@@ -5,7 +5,11 @@ use std::io;
 use cargotest::create_board;
 use cargotest::numbers_on_board;
 use cargotest::BoardState;
-use cargotest::MapElement;
+use cargotest::MapElement::Mine;
+use cargotest::MapElement::Number;
+use cargotest::MapElementCellState::Closed;
+use cargotest::MapElementCellState::Flagged;
+use cargotest::MapElementCellState::Open;
 use cargotest::Point;
 
 fn main() {
@@ -28,7 +32,7 @@ fn main() {
             return;
         }
 
-        println!("Please input operation, column and row in the following format: ocr.\nExample: o35 to open column 3, row 5");
+        println!("Please input operation (open or flag), column and row.Examples:\no35 to open column 3, row 5\nf13 to flag column 1, row 3");
         let mut line = String::new();
         io::stdin()
             .read_line(&mut line)
@@ -38,6 +42,7 @@ fn main() {
             Some(Operation::Open { point }) => {
                 board = board.cascade_open_item(&point).unwrap_or(board)
             }
+            Some(Operation::Flag { point }) => board = board.flag_item(&point),
             _ => continue,
         }
     }
@@ -52,12 +57,16 @@ pub enum Operation {
 fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
     let bytes = line.as_bytes();
     match bytes {
-        [b'o', x, y, b'\n'] => {
+        [op, x, y, b'\n'] => {
             let x = coord_reverse_mapping(*x);
             let y = coord_reverse_mapping(*y);
             let p = Point { x, y };
             if matches!(board.at(&p), Some(_)) {
-                Some(Operation::Open { point: p })
+                match op {
+                    b'o' => Some(Operation::Open { point: p }),
+                    b'f' => Some(Operation::Flag { point: p }),
+                    _ => None,
+                }
             } else {
                 None
             }
@@ -68,12 +77,16 @@ fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
 
 fn coord_reverse_mapping(c: u8) -> i32 {
     let mut mapping = vec![];
-    mapping.extend((b'0'..=b'9').map(char::from));
-    mapping.extend((b'a'..=b'z').map(char::from));
-    let c = char::from(c);
+    mapping.extend(b'0'..=b'9');
+    mapping.extend(b'a'..=b'z');
 
-    let v = mapping.iter().enumerate().find(|(_, &x)| c == x).unwrap();
-    v.0 as i32
+    mapping
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (i as i32, c))
+        .find(|(_, &x)| c == x)
+        .map(|(i, _)| i)
+        .unwrap_or(-1)
 }
 
 fn print_board_state(board: &cargotest::Board) {
@@ -104,27 +117,21 @@ fn colorized_print_map(board: &cargotest::Board) {
             let x = x as i32;
             let y = y as i32;
             let c = match board.at(&cargotest::Point { x, y }) {
-                Some(MapElement::Mine { open, .. }) => {
-                    if is_done || *open {
-                        " ".on_red()
-                    } else {
-                        " ".on_yellow()
-                    }
-                }
-                Some(MapElement::Empty { open, .. }) => {
-                    if is_done || *open {
-                        " ".on_bright_white()
-                    } else {
-                        " ".on_yellow()
-                    }
-                }
-                Some(MapElement::Number { open, count, .. }) => {
-                    if is_done || *open {
-                        format!("{}", count).black().on_bright_cyan()
-                    } else {
-                        " ".on_yellow()
-                    }
-                }
+                Some(Mine { state }) => match (state, is_done) {
+                    (_, true) | (Open, _) => " ".on_red(),
+                    (Flagged, _) => " ".on_bright_green(),
+                    (Closed, _) => " ".on_yellow(),
+                },
+                Some(Number { state, count: 0 }) => match (state, is_done) {
+                    (_, true) | (Open, _) => " ".on_bright_white(),
+                    (Flagged, _) => " ".on_bright_green(),
+                    (Closed, _) => " ".on_yellow(),
+                },
+                Some(Number { state, count }) => match (state, is_done) {
+                    (_, true) | (Open, _) => format!("{}", count).black().on_bright_cyan(),
+                    (Flagged, _) => " ".on_bright_green(),
+                    (Closed, _) => " ".on_yellow(),
+                },
                 _ => unreachable!(),
             };
             print!("{} ", c);
@@ -144,6 +151,7 @@ fn colorized_print_map(board: &cargotest::Board) {
 mod tests {
     use super::*;
     use cargotest::*;
+    use pretty_assertions::assert_eq;
 
     // TODO: I'm a dummy and couldn't figure out how to import this function and the next one from lib.rs
     fn make_map(map: Vec<Vec<(bool, i32)>>) -> Vec<Vec<MapElement>> {
@@ -151,18 +159,12 @@ mod tests {
             .map(|row| {
                 row.iter()
                     .map(|(open, count)| match count {
-                        -1 => MapElement::Mine {
-                            open: *open,
-                            flagged: false,
+                        -1 => Mine {
+                            state: if *open { Open } else { Closed },
                         },
-                        0 => MapElement::Empty {
-                            open: *open,
-                            flagged: false,
-                        },
-                        count => MapElement::Number {
-                            open: *open,
+                        count => Number {
+                            state: if *open { Open } else { Closed },
                             count: *count,
-                            flagged: false,
                         },
                     })
                     .collect()
