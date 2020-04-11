@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum MapElement {
     Mine {
@@ -494,4 +496,121 @@ pub mod tests {
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
     }
+}
+
+#[cfg(test)]
+pub mod tests2 {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_create_square() {
+        let square = create_square(20, 10, 1, 0);
+        let mut props = HashMap::new();
+        props.insert("width".to_string(), "4.00%".to_string());
+        props.insert("height".to_string(), "4.00%".to_string());
+        props.insert("x".to_string(), "5.50%".to_string());
+        props.insert("y".to_string(), "0.50%".to_string());
+        props.insert("fill".to_string(), "yellow".to_string());
+        let expected_square = SvgSquare { props };
+
+        assert_eq!(square, expected_square);
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct SvgSquare {
+    props: HashMap<String, String>,
+}
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+
+fn small_board() -> Board {
+    use rand::Rng;
+    let width = 8;
+    let height = 10;
+    let mines = 10;
+
+    let board = create_board(width, height, mines, |x, y| {
+        rand::thread_rng().gen_range(x, y)
+    });
+
+    numbers_on_board(board)
+}
+
+fn create_square(width: usize, height: usize, x: i32, y: i32) -> SvgSquare {
+    let mut props = HashMap::new();
+    let padding: f64 = 1.0;
+    let square_size: f64 = 100.0 / (height.max(width) as f64);
+    let width = format!("{:.2}%", square_size - padding).to_string();
+    let height = format!("{:.2}%", square_size - padding).to_string();
+    let x = format!("{:.2}%", square_size * (x as f64) + (padding / 2.0)).to_string();
+    let y = format!("{:.2}%", square_size * (y as f64) + (padding / 2.0)).to_string();
+
+    props.insert("width".to_string(), width);
+    props.insert("height".to_string(), height);
+    props.insert("x".to_string(), x);
+    props.insert("y".to_string(), y);
+    props.insert("fill".to_string(), "yellow".to_string());
+    SvgSquare { props }
+}
+
+#[wasm_bindgen(start)]
+pub fn main() -> Result<(), JsValue> {
+    let mut board = small_board();
+
+    // Use `web_sys`'s global `window` function to get a handle on the global
+    // window object.
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+    let body = document.body().expect("document should have a body");
+
+    let figure = document.create_element("figure")?;
+    let div = document
+        .create_element("div")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlDivElement>()
+        .unwrap();
+    div.set_attribute("class", "game-main")?;
+    let svg = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "svg")?;
+    svg.set_attribute("width", "300px")?;
+    svg.set_attribute("height", "300px")?;
+    svg.set_attribute("viewBox", "0 0 100 100")?;
+
+    let rect = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
+    rect.set_attribute("width", "50%")?;
+    rect.set_attribute("height", "50%")?;
+    rect.set_attribute("fill", "black")?;
+    let rect2 = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
+    rect2.set_attribute("x", "50%")?;
+    rect2.set_attribute("y", "50%")?;
+    rect2.set_attribute("width", "50%")?;
+    rect2.set_attribute("height", "50%")?;
+    rect2.set_attribute("fill", "yellow")?;
+
+    //svg.append_child(&rect).unwrap();
+    //svg.append_child(&rect2).unwrap();
+    for y in 0..board.height {
+        for x in 0..board.width {
+            let x = x as i32;
+            let y = y as i32;
+            let square = create_square(board.height, board.width, x, y);
+            let rect = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
+            for (k,v) in square.props {
+                rect.set_attribute(&k, &v)?;
+            }
+            svg.append_child(&rect).unwrap();
+        }
+    }
+    div.append_child(&svg).unwrap();
+    figure.append_child(&div).unwrap();
+    body.append_child(&figure).unwrap();
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn add(a: u32, b: u32) -> u32 {
+    a + b
 }
