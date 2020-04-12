@@ -17,6 +17,7 @@ log = "0.4.8"
 
 js-sys = "0.3.32"
 gloo = "0.2.0"
+lazy_static = "1.4.0"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -65,4 +66,6 @@ features = [
   'SvgTitleElement',
   'SvgDescElement',
   'console',
+  'EventTarget',
+  'MouseEvent',
   ]

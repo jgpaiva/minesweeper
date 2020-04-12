@@ -1,6 +1,7 @@
 .flex-container {
     display:flex;
     flex-flow: row wrap;
+    margin: 5%
 }
 
 .break {
@@ -12,17 +13,36 @@
     content: "";
     display: block;
     padding-top: 100%;
-    float: left;
 }
 
 .item {
-    background-color: #00ffd2;
     display: flex;
     justify-content: center;
     align-items: center;
+    font-size: 40px;
+}
+
+.active {
+    background-color: #beebf6;
+}
+
+.frozen {
+    background-color: #aaaaaa;
+}
+
+.ongoing {
+    background-color: #ffffff;
+}
+
+.won {
+    background-color: #26f813;
+}
+
+.failed {
+    background-color: #f30620;
 }
 
 body {
     margin: 0;
-    font-family: 'Open Sans', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }

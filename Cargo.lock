@@ -35,6 +35,7 @@ dependencies = [
  "getrandom",
  "gloo",
  "js-sys",
+ "lazy_static",
  "log",
  "pretty_assertions",
  "rand",
