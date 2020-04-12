@@ -511,7 +511,7 @@ pub mod tests2 {
         props.insert("height".to_string(), "4.00%".to_string());
         props.insert("x".to_string(), "5.50%".to_string());
         props.insert("y".to_string(), "0.50%".to_string());
-        props.insert("fill".to_string(), "yellow".to_string());
+        props.insert("fill".to_string(), "grey".to_string());
         let expected_square = SvgSquare { props };
 
         assert_eq!(square, expected_square);
@@ -528,7 +528,7 @@ use wasm_bindgen::JsCast;
 
 fn small_board() -> Board {
     use rand::Rng;
-    let width = 8;
+    let width = 10;
     let height = 10;
     let mines = 10;
 
@@ -552,7 +552,7 @@ fn create_square(width: usize, height: usize, x: i32, y: i32) -> SvgSquare {
     props.insert("height".to_string(), height);
     props.insert("x".to_string(), x);
     props.insert("y".to_string(), y);
-    props.insert("fill".to_string(), "yellow".to_string());
+    props.insert("fill".to_string(), "grey".to_string());
     SvgSquare { props }
 }
 
@@ -578,17 +578,6 @@ pub fn main() -> Result<(), JsValue> {
     svg.set_attribute("height", "300px")?;
     svg.set_attribute("viewBox", "0 0 100 100")?;
 
-    let rect = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
-    rect.set_attribute("width", "50%")?;
-    rect.set_attribute("height", "50%")?;
-    rect.set_attribute("fill", "black")?;
-    let rect2 = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
-    rect2.set_attribute("x", "50%")?;
-    rect2.set_attribute("y", "50%")?;
-    rect2.set_attribute("width", "50%")?;
-    rect2.set_attribute("height", "50%")?;
-    rect2.set_attribute("fill", "yellow")?;
-
     //svg.append_child(&rect).unwrap();
     //svg.append_child(&rect2).unwrap();
     for y in 0..board.height {
@@ -601,6 +590,7 @@ pub fn main() -> Result<(), JsValue> {
                 rect.set_attribute(&k, &v)?;
             }
             svg.append_child(&rect).unwrap();
+            //<text x="2%" y="8.50%" font-family="Monospace" fill="blue" font-size="10">1</text>
         }
     }
     div.append_child(&svg).unwrap();
@@ -614,3 +604,18 @@ pub fn main() -> Result<(), JsValue> {
 pub fn add(a: u32, b: u32) -> u32 {
     a + b
 }
+
+// <svg width="100%" height="100%" viewBox="0 0 100 100"><rect width="9.00" x="0.50" y="0.50" height="9.00" fill="grey"></rect>
+
+//      <text x="5" y="6" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">1</text>
+//
+//    <rect width="9.00%" x="0.50%" height="9.00%" y="10.50%" fill="grey"></rect>
+//
+//      <text x="5" y="16" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">3</text>
+//
+//    <rect height="9.00%" x="10.50%" y="0.50%" fill="grey" width="9.00%"></rect>
+//    <rect width="9.00%" y="0.50%" height="9.00%" fill="grey" x="20.50%"></rect>
+//
+//    <text x="15" y="6" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">3</text>
+//
+//    </svg>
