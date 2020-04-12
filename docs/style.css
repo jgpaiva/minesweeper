@@ -1,0 +1,48 @@
+.flex-container {
+    display:flex;
+    flex-flow: row wrap;
+    margin: 5%
+}
+
+.break {
+    width:100%;
+    flex-basis: 100%;
+}
+
+.item:before {
+    content: "";
+    display: block;
+    padding-top: 100%;
+}
+
+.item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+}
+
+.active {
+    background-color: #beebf6;
+}
+
+.frozen {
+    background-color: #aaaaaa;
+}
+
+.ongoing {
+    background-color: #ffffff;
+}
+
+.won {
+    background-color: #26f813;
+}
+
+.failed {
+    background-color: #f30620;
+}
+
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+}
