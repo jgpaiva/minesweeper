@@ -566,36 +566,35 @@ pub fn main() -> Result<(), JsValue> {
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
 
-    let figure = document.create_element("figure")?;
     let div = document
         .create_element("div")
         .unwrap()
         .dyn_into::<web_sys::HtmlDivElement>()
         .unwrap();
-    div.set_attribute("class", "game-main")?;
-    let svg = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "svg")?;
-    svg.set_attribute("width", "300px")?;
-    svg.set_attribute("height", "300px")?;
-    svg.set_attribute("viewBox", "0 0 100 100")?;
+    div.set_attribute("class", "flex-container")?;
 
-    //svg.append_child(&rect).unwrap();
-    //svg.append_child(&rect2).unwrap();
     for y in 0..board.height {
         for x in 0..board.width {
             let x = x as i32;
             let y = y as i32;
             let square = create_square(board.height, board.width, x, y);
-            let rect = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "rect")?;
-            for (k,v) in square.props {
-                rect.set_attribute(&k, &v)?;
-            }
-            svg.append_child(&rect).unwrap();
-            //<text x="2%" y="8.50%" font-family="Monospace" fill="blue" font-size="10">1</text>
+            let inner_div = document.create_element("div")?;
+            inner_div.set_attribute("class", "item");
+            inner_div.set_attribute(
+                "style",
+                &format!(
+                    "width:{:.2}%; margin:1%",
+                    100.0 / (board.width as f64) - 2.0
+                ),
+            );
+            inner_div.set_inner_html(&format!("{} {}", x, y));
+            div.append_child(&inner_div).unwrap();
         }
+        let inner_div = document.create_element("div")?;
+        inner_div.set_attribute("class", "break");
+        div.append_child(&inner_div).unwrap();
     }
-    div.append_child(&svg).unwrap();
-    figure.append_child(&div).unwrap();
-    body.append_child(&figure).unwrap();
+    body.append_child(&div).unwrap();
 
     Ok(())
 }
@@ -604,18 +603,3 @@ pub fn main() -> Result<(), JsValue> {
 pub fn add(a: u32, b: u32) -> u32 {
     a + b
 }
-
-// <svg width="100%" height="100%" viewBox="0 0 100 100"><rect width="9.00" x="0.50" y="0.50" height="9.00" fill="grey"></rect>
-
-//      <text x="5" y="6" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">1</text>
-//
-//    <rect width="9.00%" x="0.50%" height="9.00%" y="10.50%" fill="grey"></rect>
-//
-//      <text x="5" y="16" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">3</text>
-//
-//    <rect height="9.00%" x="10.50%" y="0.50%" fill="grey" width="9.00%"></rect>
-//    <rect width="9.00%" y="0.50%" height="9.00%" fill="grey" x="20.50%"></rect>
-//
-//    <text x="15" y="6" font-size="10" fill="blue" font-family="monospace" dominant-baseline="middle" text-anchor="middle">3</text>
-//
-//    </svg>
