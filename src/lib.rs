@@ -39,10 +39,10 @@ fn create_item(width: usize, height: usize) -> CellItem {
     let mut props = HashMap::new();
     let square_size: f64 = 100.0 / (height.max(width) as f64);
     let margin: f64 = 0.05 * square_size;
-    let width = format!("{:.2}", square_size - 2.0 * margin).to_string();
+    let width = format!("{:.2}", square_size - 2.0 * margin);
 
     let style = format!("width: {}%; margin: {}%", width, margin);
-    props.insert("style".to_string(), style.to_string());
+    props.insert("style".to_string(), style);
     props.insert("class".to_string(), "item".to_string());
     CellItem { props }
 }
@@ -84,14 +84,14 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
                     let document = window.document().expect("should have a document on window");
                     let div = document.get_element_by_id("board_game").unwrap();
                     let body = div.parent_node().unwrap();
-                    body.remove_child(&div);
+                    body.remove_child(&div).expect("should be able to remove this item");
                     let mut board = BOARD.lock().unwrap();
                     let val = board.cascade_open_item(&Point { x, y });
-                    if val.is_some() {
-                        *board = val.unwrap();
+                    if let Some(new_board) = val {
+                        *board = new_board;
                     }
 
-                    create_board_page(&board);
+                    create_board_page(&board).expect("should be able to create a new board");
                 }) as Box<dyn FnMut(_)>);
                 inner_div
                     .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
