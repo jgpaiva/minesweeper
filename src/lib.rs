@@ -84,7 +84,8 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
                     let document = window.document().expect("should have a document on window");
                     let div = document.get_element_by_id("board_game").unwrap();
                     let body = div.parent_node().unwrap();
-                    body.remove_child(&div).expect("should be able to remove this item");
+                    body.remove_child(&div)
+                        .expect("should be able to remove this item");
                     let mut board = BOARD.lock().unwrap();
                     let val = board.cascade_open_item(&Point { x, y });
                     if let Some(new_board) = val {
