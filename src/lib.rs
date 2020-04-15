@@ -9,40 +9,6 @@ use lib_minesweeper::MapElement::Number;
 use lib_minesweeper::MapElementCellState::Closed;
 use lib_minesweeper::Point;
 
-#[cfg(test)]
-pub mod tests2 {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_create_item() {
-        let square = create_item(20, 10);
-        let mut props = HashMap::new();
-        props.insert("class".to_string(), "item".to_string());
-        props.insert(
-            "style".to_string(),
-            "width: 4.50%; margin: 0.25%".to_string(),
-        );
-        let expected_item = CellItem { props };
-
-        assert_eq!(square, expected_item);
-    }
-
-    #[test]
-    fn test_create_item2() {
-        let square = create_item(10, 10);
-        let mut props = HashMap::new();
-        props.insert("class".to_string(), "item".to_string());
-        props.insert(
-            "style".to_string(),
-            "width: 9.00%; margin: 0.5%".to_string(),
-        );
-        let expected_item = CellItem { props };
-
-        assert_eq!(square, expected_item);
-    }
-}
-
 #[derive(Debug, PartialEq)]
 struct SvgSquare {
     props: HashMap<String, String>,
@@ -170,12 +136,36 @@ pub fn main() -> Result<(), JsValue> {
     create_board_page(&*BOARD.lock().unwrap())
 }
 
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
+#[cfg(test)]
+pub mod tests2 {
+    use super::*;
+    use pretty_assertions::assert_eq;
 
-#[wasm_bindgen]
-pub fn add(a: u32, b: u32) -> u32 {
-    a + b
+    #[test]
+    fn test_create_item() {
+        let square = create_item(20, 10);
+        let mut props = HashMap::new();
+        props.insert("class".to_string(), "item".to_string());
+        props.insert(
+            "style".to_string(),
+            "width: 4.50%; margin: 0.25%".to_string(),
+        );
+        let expected_item = CellItem { props };
+
+        assert_eq!(square, expected_item);
+    }
+
+    #[test]
+    fn test_create_item2() {
+        let square = create_item(10, 10);
+        let mut props = HashMap::new();
+        props.insert("class".to_string(), "item".to_string());
+        props.insert(
+            "style".to_string(),
+            "width: 9.00%; margin: 0.5%".to_string(),
+        );
+        let expected_item = CellItem { props };
+
+        assert_eq!(square, expected_item);
+    }
 }
