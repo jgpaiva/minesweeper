@@ -1,0 +1,18 @@
+[package]
+name = "lib_minesweeper"
+version = "0.1.0"
+authors = ["João Paiva <jgpaiva@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+colored = "1.9.3"
+
+[dependencies.rand]
+version = "0.7.3"
+features = ["log"]
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"
