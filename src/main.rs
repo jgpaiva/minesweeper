@@ -2,15 +2,15 @@ use colored::Colorize;
 use rand::Rng;
 use std::io;
 
-use cargotest::create_board;
-use cargotest::numbers_on_board;
-use cargotest::BoardState;
-use cargotest::MapElement::Mine;
-use cargotest::MapElement::Number;
-use cargotest::MapElementCellState::Closed;
-use cargotest::MapElementCellState::Flagged;
-use cargotest::MapElementCellState::Open;
-use cargotest::Point;
+use minesweeper::create_board;
+use minesweeper::numbers_on_board;
+use minesweeper::BoardState;
+use minesweeper::MapElement::Mine;
+use minesweeper::MapElement::Number;
+use minesweeper::MapElementCellState::Closed;
+use minesweeper::MapElementCellState::Flagged;
+use minesweeper::MapElementCellState::Open;
+use minesweeper::Point;
 
 fn main() {
     //let height = rand::thread_rng().gen_range(5, 30);
@@ -50,11 +50,11 @@ fn main() {
 
 #[derive(Debug, PartialEq)]
 pub enum Operation {
-    Open { point: cargotest::Point },
-    Flag { point: cargotest::Point },
+    Open { point: minesweeper::Point },
+    Flag { point: minesweeper::Point },
 }
 
-fn process_line(line: String, board: &cargotest::Board) -> Option<Operation> {
+fn process_line(line: String, board: &minesweeper::Board) -> Option<Operation> {
     let bytes = line.as_bytes();
     match bytes {
         [op, x, y, b'\n'] => {
@@ -89,7 +89,7 @@ fn coord_reverse_mapping(c: u8) -> i32 {
         .unwrap_or(-1)
 }
 
-fn print_board_state(board: &cargotest::Board) {
+fn print_board_state(board: &minesweeper::Board) {
     print!("Board is currently ");
     match board.state {
         BoardState::Won => print!("{}", "🎉🎉  WON! 🎉🎉".green()),
@@ -100,7 +100,7 @@ fn print_board_state(board: &cargotest::Board) {
     println!();
 }
 
-fn colorized_print_map(board: &cargotest::Board) {
+fn colorized_print_map(board: &minesweeper::Board) {
     print_board_state(&board);
     let mut mapping = vec![];
     mapping.extend((b'0'..=b'9').map(char::from));
@@ -116,7 +116,7 @@ fn colorized_print_map(board: &cargotest::Board) {
         for x in 0..board.width {
             let x = x as i32;
             let y = y as i32;
-            let c = match board.at(&cargotest::Point { x, y }) {
+            let c = match board.at(&minesweeper::Point { x, y }) {
                 Some(Mine { state }) => match (state, is_done) {
                     (_, true) | (Open, _) => " ".on_red(),
                     (Flagged, _) => " ".on_bright_green(),
@@ -150,7 +150,7 @@ fn colorized_print_map(board: &cargotest::Board) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cargotest::*;
+    use minesweeper::*;
     use pretty_assertions::assert_eq;
 
     // TODO: I'm a dummy and couldn't figure out how to import this function and the next one from lib.rs

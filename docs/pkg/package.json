@@ -1,15 +1,15 @@
 {
-  "name": "cargotest",
+  "name": "minesweeper",
   "collaborators": [
     "João Paiva <jgpaiva@gmail.com>"
   ],
   "version": "0.1.0",
   "files": [
-    "cargotest_bg.wasm",
-    "cargotest.js",
-    "cargotest.d.ts"
+    "minesweeper_bg.wasm",
+    "minesweeper.js",
+    "minesweeper.d.ts"
   ],
-  "module": "cargotest.js",
-  "types": "cargotest.d.ts",
+  "module": "minesweeper.js",
+  "types": "minesweeper.d.ts",
   "sideEffects": false
 }

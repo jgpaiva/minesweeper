@@ -27,25 +27,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12ae9db68ad7fac5fe51304d20f016c911539251075a214f8e663babefa35187"
 
 [[package]]
-name = "cargotest"
-version = "0.1.0"
-dependencies = [
- "colored",
- "console_error_panic_hook",
- "getrandom",
- "gloo",
- "js-sys",
- "lazy_static",
- "log",
- "pretty_assertions",
- "rand",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "web-sys",
- "wee_alloc",
-]
-
-[[package]]
 name = "cfg-if"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -204,6 +185,25 @@ name = "memory_units"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
+
+[[package]]
+name = "minesweeper"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "console_error_panic_hook",
+ "getrandom",
+ "gloo",
+ "js-sys",
+ "lazy_static",
+ "log",
+ "pretty_assertions",
+ "rand",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "web-sys",
+ "wee_alloc",
+]
 
 [[package]]
 name = "output_vt100"
