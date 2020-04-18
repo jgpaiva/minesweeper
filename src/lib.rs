@@ -7,15 +7,16 @@ use lib_minesweeper::BoardState;
 use lib_minesweeper::MapElement::Mine;
 use lib_minesweeper::MapElement::Number;
 use lib_minesweeper::MapElementCellState::Closed;
+use lib_minesweeper::MapElementCellState::Flagged;
 use lib_minesweeper::Point;
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[derive(Debug, PartialEq)]
 struct SvgSquare {
     props: HashMap<String, String>,
 }
-
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 fn small_board() -> Board {
     use rand::Rng;
@@ -51,29 +52,73 @@ fn create_item(width: usize, height: usize) -> CellItem {
 extern crate lazy_static;
 use std::sync::Mutex;
 
+enum Mode {
+    Flagging,
+    Digging,
+}
+
 lazy_static! {
     static ref BOARD: Mutex<Board> = Mutex::new(small_board());
+    static ref MODE: Mutex<Mode> = Mutex::new(Mode::Digging);
 }
 
 fn update_board(p: Point) {
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-    let div = document.get_element_by_id("board_game").unwrap();
-    let body = div.parent_node().unwrap();
-    body.remove_child(&div)
-        .expect("should be able to remove this item");
-    let mut board = BOARD.lock().unwrap();
-    let val = board.cascade_open_item(&p);
-    if let Some(new_board) = val {
-        *board = new_board;
+    {
+        let mut board = BOARD.lock().unwrap();
+        let mode = MODE.lock().unwrap();
+        match *mode {
+            Mode::Digging => {
+                let val = board.cascade_open_item(&p);
+                if let Some(new_board) = val {
+                    *board = new_board;
+                }
+            }
+            Mode::Flagging => {
+                *board = board.flag_item(&p);
+            }
+        }
     }
-
-    create_board_page(&board).expect("should be able to create a new board");
+    render_page().expect("should be able to create a new board");
 }
 
-pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
-    // Use `web_sys`'s global `window` function to get a handle on the global
-    // window object.
+fn toggle_mode() {
+    {
+        let mut mode = MODE.lock().unwrap();
+        *mode = match *mode {
+            Mode::Flagging => Mode::Digging,
+            Mode::Digging => Mode::Flagging,
+        }
+    }
+    render_page().expect("should be able to create a new board");
+}
+
+fn create_structure() -> Result<(), JsValue> {
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+    let body = document.body().expect("document should have a body");
+
+    let div = document.create_element("div")?;
+    div.set_attribute("class", "flex-container")?;
+    div.set_attribute("id", "button_placeholder")?;
+    let button = document.create_element("button")?;
+    button.set_attribute("id", "mode-button")?;
+    button.set_attribute("class", "item")?;
+    div.append_child(&button).unwrap();
+    body.append_child(&div).unwrap();
+
+    let div = document.create_element("div")?;
+    div.set_attribute("id", "board_game_placeholder")?;
+    let board_game = document.create_element("div")?;
+    board_game.set_attribute("id", "board_game")?;
+    board_game.set_attribute("class", "flex-container")?;
+    div.append_child(&board_game).unwrap();
+    body.append_child(&div).unwrap();
+    Ok(())
+}
+
+pub fn render_page() -> Result<(), JsValue> {
+    let board = BOARD.lock().unwrap();
+    let mode = MODE.lock().unwrap();
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
@@ -84,9 +129,37 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
         BoardState::NotReady => unreachable!(),
     }?;
 
+    let mode_button = document.get_element_by_id("mode-button").unwrap();
+    let div = mode_button.parent_node().unwrap();
+    div.remove_child(&mode_button)
+        .expect("should be able to remove this item");
+    let mode_button = document.create_element("button")?;
+    mode_button.set_attribute("id", "mode-button")?;
+    mode_button.set_attribute("class", "item")?;
+    let img = document.create_element("img")?;
+    img.set_attribute("style", "width: 2em; height:2em")?;
+    let button_image = match *mode {
+        Mode::Flagging => "svg/flag.svg",
+        Mode::Digging => "svg/dig.svg",
+    };
+    let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
+        toggle_mode();
+    }) as Box<dyn FnMut(_)>);
+    mode_button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
+    closure.forget();
+    img.set_attribute("src", button_image)?;
+    mode_button.append_child(&img).unwrap();
+    div.append_child(&mode_button).unwrap();
+
+    let div = document.get_element_by_id("board_game").unwrap();
+    let board_game_placeholder = div.parent_node().unwrap();
+    board_game_placeholder
+        .remove_child(&div)
+        .expect("should be able to remove this item");
+
     let div = document.create_element("div")?;
-    div.set_attribute("class", "flex-container")?;
     div.set_attribute("id", "board_game")?;
+    div.set_attribute("class", "flex-container")?;
 
     for y in 0..board.height {
         for x in 0..board.width {
@@ -118,6 +191,10 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
             let img = document.create_element("img")?;
             img.set_attribute("style", "width: 100%; height:auto")?;
             match (is_done, board.at(&Point { x, y })) {
+                (false, Some(Number { state: Flagged, .. }))
+                | (false, Some(Mine { state: Flagged, .. })) => {
+                    img.set_attribute("src", "svg/flag.svg")?
+                }
                 (false, Some(Number { state: Closed, .. }))
                 | (false, Some(Mine { state: Closed, .. })) => {
                     img.set_attribute("src", "svg/question.svg")?
@@ -134,14 +211,15 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
         inner_div.set_attribute("class", "break")?;
         div.append_child(&inner_div).unwrap();
     }
-    body.append_child(&div).unwrap();
+    board_game_placeholder.append_child(&div).unwrap();
 
     Ok(())
 }
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    create_board_page(&*BOARD.lock().unwrap())
+    create_structure()?;
+    render_page()
 }
 
 #[cfg(test)]
