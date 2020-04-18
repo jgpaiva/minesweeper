@@ -55,6 +55,22 @@ lazy_static! {
     static ref BOARD: Mutex<Board> = Mutex::new(small_board());
 }
 
+fn update_board(p: Point) {
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+    let div = document.get_element_by_id("board_game").unwrap();
+    let body = div.parent_node().unwrap();
+    body.remove_child(&div)
+        .expect("should be able to remove this item");
+    let mut board = BOARD.lock().unwrap();
+    let val = board.cascade_open_item(&p);
+    if let Some(new_board) = val {
+        *board = new_board;
+    }
+
+    create_board_page(&board).expect("should be able to create a new board");
+}
+
 pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
     // Use `web_sys`'s global `window` function to get a handle on the global
     // window object.
@@ -76,23 +92,11 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
         for x in 0..board.width {
             let x = x as i32;
             let y = y as i32;
-            let inner_div = document.create_element("div")?;
+            let inner_div = document.create_element("button")?;
             let is_done = matches!(board.state, BoardState::Failed | BoardState::Won);
             if !is_done {
                 let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
-                    let window = web_sys::window().expect("no global `window` exists");
-                    let document = window.document().expect("should have a document on window");
-                    let div = document.get_element_by_id("board_game").unwrap();
-                    let body = div.parent_node().unwrap();
-                    body.remove_child(&div)
-                        .expect("should be able to remove this item");
-                    let mut board = BOARD.lock().unwrap();
-                    let val = board.cascade_open_item(&Point { x, y });
-                    if let Some(new_board) = val {
-                        *board = new_board;
-                    }
-
-                    create_board_page(&board).expect("should be able to create a new board");
+                    update_board(Point { x, y });
                 }) as Box<dyn FnMut(_)>);
                 inner_div
                     .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
@@ -102,11 +106,14 @@ pub fn create_board_page(board: &Board) -> Result<(), JsValue> {
             for (k, v) in item.props {
                 inner_div.set_attribute(&k, &v)?;
             }
-            if is_done {
-                inner_div.set_attribute("class", "item frozen")?;
-            } else {
-                inner_div.set_attribute("class", "item active")?;
-            }
+            inner_div.set_attribute(
+                "class",
+                if is_done {
+                    "item frozen"
+                } else {
+                    "item active"
+                },
+            )?;
             div.append_child(&inner_div).unwrap();
             let img = document.create_element("img")?;
             img.set_attribute("style", "width: 100%; height:auto")?;
@@ -138,12 +145,12 @@ pub fn main() -> Result<(), JsValue> {
 }
 
 #[cfg(test)]
-pub mod tests2 {
+pub mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_create_item() {
+    fn test_create_item_asymetric_board() {
         let square = create_item(20, 10);
         let mut props = HashMap::new();
         props.insert("class".to_string(), "item".to_string());
@@ -157,7 +164,21 @@ pub mod tests2 {
     }
 
     #[test]
-    fn test_create_item2() {
+    fn test_create_item_asymetric_reversed_board() {
+        let square = create_item(10, 20);
+        let mut props = HashMap::new();
+        props.insert("class".to_string(), "item".to_string());
+        props.insert(
+            "style".to_string(),
+            "width: 4.50%; margin: 0.25%".to_string(),
+        );
+        let expected_item = CellItem { props };
+
+        assert_eq!(square, expected_item);
+    }
+
+    #[test]
+    fn test_create_item_smaller_board() {
         let square = create_item(10, 10);
         let mut props = HashMap::new();
         props.insert("class".to_string(), "item".to_string());
