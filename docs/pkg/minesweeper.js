@@ -222,25 +222,13 @@ function _assertNum(n) {
 function __wbg_adapter_18(arg0, arg1, arg2) {
     _assertNum(arg0);
     _assertNum(arg1);
-    wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h1a503f200e8b3e0b(arg0, arg1, addHeapObject(arg2));
+    wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hfa49eb8ef457094a(arg0, arg1, addHeapObject(arg2));
 }
 
 /**
 */
 export function main() {
     wasm.main();
-}
-
-/**
-* @param {number} a
-* @param {number} b
-* @returns {number}
-*/
-export function add(a, b) {
-    _assertNum(a);
-    _assertNum(b);
-    var ret = wasm.add(a, b);
-    return ret >>> 0;
 }
 
 function isLikeNone(x) {
@@ -549,9 +537,9 @@ async function init(input) {
     imports.wbg.__wbindgen_rethrow = function(arg0) {
         throw takeObject(arg0);
     };
-    imports.wbg.__wbindgen_closure_wrapper118 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper99 = function(arg0, arg1, arg2) {
         try {
-            var ret = makeMutClosure(arg0, arg1, 24, __wbg_adapter_18);
+            var ret = makeMutClosure(arg0, arg1, 22, __wbg_adapter_18);
             return addHeapObject(ret);
         } catch (e) {
             logError(e)

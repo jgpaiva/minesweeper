@@ -3,10 +3,14 @@
 This is an attempt at building a minesweeper solver. Right now it only displays
 the board.
 
-## how to run
+## Demo
 
-After installing rust and cargo, run `cargo run`. To stop it, press ^C.
+You can play the online demo [here](https://jgpaiva.github.io/minesweeper/).
 
-## example output
+## How to run localy
+
+After installing rust and cargo, run `wasm-pack build --dev --target web`. After this, start a server on the local folder (e.g. `python3 -m http.server`) and check it out on your favourite browser.
+
+## Example output
 
 ![demo output](imgs/demo.png)
