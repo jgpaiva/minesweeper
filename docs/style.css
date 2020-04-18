@@ -33,6 +33,8 @@
 	  color:#666666;
 	  font-weight:bold;
 	  text-decoration:none;
+    height:2em;
+    width:2em;
 }
 .clickable:active {
 	  position:relative;

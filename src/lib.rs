@@ -6,6 +6,7 @@ use lib_minesweeper::Board;
 use lib_minesweeper::BoardState::Failed;
 use lib_minesweeper::BoardState::NotReady;
 use lib_minesweeper::BoardState::Playing;
+use lib_minesweeper::BoardState::Ready;
 use lib_minesweeper::BoardState::Won;
 use lib_minesweeper::MapElement::Mine;
 use lib_minesweeper::MapElement::Number;
@@ -34,14 +35,40 @@ fn small_board() -> Board {
     numbers_on_board(board)
 }
 
+fn medium_board() -> Board {
+    use rand::Rng;
+    let width = 16;
+    let height = 16;
+    let mines = 40;
+
+    let board = create_board(width, height, mines, |x, y| {
+        rand::thread_rng().gen_range(x, y)
+    });
+
+    numbers_on_board(board)
+}
+
+fn large_board() -> Board {
+    use rand::Rng;
+    let width = 16;
+    let height = 30;
+    let mines = 99;
+
+    let board = create_board(width, height, mines, |x, y| {
+        rand::thread_rng().gen_range(x, y)
+    });
+
+    numbers_on_board(board)
+}
+
 #[derive(Debug, PartialEq)]
 struct CellItem {
     props: HashMap<String, String>,
 }
 
-fn create_item(width: usize, height: usize) -> CellItem {
+fn create_item(width: usize, _height: usize) -> CellItem {
     let mut props = HashMap::new();
-    let square_size: f64 = 100.0 / (height.max(width) as f64);
+    let square_size: f64 = 100.0 / (width as f64);
     let margin: f64 = 0.05 * square_size;
     let width = format!("{:.2}", square_size - 2.0 * margin);
 
@@ -61,9 +88,17 @@ enum Mode {
     Digging,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
+}
+
 lazy_static! {
     static ref BOARD: Mutex<Board> = Mutex::new(small_board());
     static ref MODE: Mutex<Mode> = Mutex::new(Mode::Digging);
+    static ref DIFFICULTY: Mutex<Difficulty> = Mutex::new(Difficulty::Easy);
 }
 
 fn update_board(p: Point) {
@@ -96,10 +131,37 @@ fn toggle_mode() {
     render_page().expect("should be able to create a new board");
 }
 
+fn toggle_difficulty() {
+    {
+        let mut board = BOARD.lock().unwrap();
+        let mut diff = DIFFICULTY.lock().unwrap();
+        let (new_board, new_diff) = match (&board.state, diff.clone()) {
+            (Ready, Difficulty::Easy) => (medium_board(), Difficulty::Medium),
+            (Ready, Difficulty::Medium) => (large_board(), Difficulty::Hard),
+            (Ready, Difficulty::Hard) => (small_board(), Difficulty::Easy),
+            (_, Difficulty::Easy) => (small_board(), Difficulty::Easy),
+            (_, Difficulty::Medium) => (medium_board(), Difficulty::Medium),
+            (_, Difficulty::Hard) => (large_board(), Difficulty::Hard),
+        };
+        *board = new_board;
+        *diff = new_diff;
+    }
+    render_page().expect("should be able to create a new board");
+}
+
 fn create_structure() -> Result<(), JsValue> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
+
+    let div = document.create_element("div")?;
+    div.set_attribute("class", "flex-container")?;
+    div.set_attribute("id", "difficulty_button_placeholder")?;
+    let button = document.create_element("div")?;
+    button.set_attribute("id", "difficulty-button")?;
+    button.set_attribute("class", "clickable item")?;
+    div.append_child(&button).unwrap();
+    body.append_child(&div).unwrap();
 
     let div = document.create_element("div")?;
     div.set_attribute("class", "flex-container")?;
@@ -109,16 +171,6 @@ fn create_structure() -> Result<(), JsValue> {
     button.set_attribute("class", "item")?;
     div.append_child(&button).unwrap();
     body.append_child(&div).unwrap();
-
-    //let div = document.create_element("div")?;
-    //div.set_attribute("class", "flex-container")?;
-    //div.set_attribute("id", "difficulty_button_placeholder")?;
-    //let button = document.create_element("div")?;
-    //button.set_attribute("id", "difficulty-button")?;
-    //button.set_attribute("class", "clickable item")?;
-    //button.set_inner_html("😀🤨🧐");
-    //div.append_child(&button).unwrap();
-    //body.append_child(&div).unwrap();
 
     let div = document.create_element("div")?;
     div.set_attribute("id", "board_game_placeholder")?;
@@ -133,12 +185,13 @@ fn create_structure() -> Result<(), JsValue> {
 pub fn render_page() -> Result<(), JsValue> {
     let board = BOARD.lock().unwrap();
     let mode = MODE.lock().unwrap();
+    let difficulty = DIFFICULTY.lock().unwrap();
     let is_done = matches!(board.state, Failed | Won);
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
     match board.state {
-        Playing => body.set_attribute("class", "ongoing"),
+        Ready | Playing => body.set_attribute("class", "ongoing"),
         Won => body.set_attribute("class", "won"),
         Failed => body.set_attribute("class", "failed"),
         NotReady => unreachable!(),
@@ -154,8 +207,8 @@ pub fn render_page() -> Result<(), JsValue> {
     let img = document.create_element("img")?;
     img.set_attribute("style", "width: 2em; height:2em")?;
     let button_image = match (&board.state, mode.clone()) {
-        (Playing, Mode::Flagging) => "svg/flag.svg",
-        (Playing, Mode::Digging) => "svg/dig.svg",
+        (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "svg/flag.svg",
+        (Ready, Mode::Digging) | (Playing, Mode::Digging) => "svg/dig.svg",
         (Won, _) => "svg/trophy.svg",
         (Failed, _) => "svg/skull.svg",
         _ => unreachable!(),
@@ -168,6 +221,27 @@ pub fn render_page() -> Result<(), JsValue> {
     img.set_attribute("src", button_image)?;
     mode_button.append_child(&img).unwrap();
     div.append_child(&mode_button).unwrap();
+
+    let difficulty_button = document.get_element_by_id("difficulty-button").unwrap();
+    let div = difficulty_button.parent_node().unwrap();
+    div.remove_child(&difficulty_button)
+        .expect("should be able to remove this item");
+    let difficulty_button = document.create_element("div")?;
+    difficulty_button.set_attribute("id", "difficulty-button")?;
+    difficulty_button.set_attribute("class", "clickable item")?;
+    let button_contents = match difficulty.clone() {
+        Difficulty::Easy => "😀",
+        Difficulty::Medium => "🤨",
+        Difficulty::Hard => "🧐",
+    };
+    difficulty_button.set_inner_html(button_contents);
+    let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
+        toggle_difficulty();
+    }) as Box<dyn FnMut(_)>);
+    difficulty_button
+        .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
+    closure.forget();
+    div.append_child(&difficulty_button).unwrap();
 
     let div = document.get_element_by_id("board_game").unwrap();
     let board_game_placeholder = div.parent_node().unwrap();
@@ -208,11 +282,15 @@ pub fn render_page() -> Result<(), JsValue> {
             let img = document.create_element("img")?;
             img.set_attribute("style", "width: 100%; height:auto")?;
             match (&board.state, board.at(&Point { x, y })) {
-                (Playing, Some(Number { state: Flagged, .. }))
+                (Ready, Some(Number { state: Flagged, .. }))
+                | (Ready, Some(Mine { state: Flagged, .. }))
+                | (Playing, Some(Number { state: Flagged, .. }))
                 | (Playing, Some(Mine { state: Flagged, .. })) => {
                     img.set_attribute("src", "svg/flag.svg")?
                 }
-                (Playing, Some(Number { state: Closed, .. }))
+                (Ready, Some(Number { state: Closed, .. }))
+                | (Ready, Some(Mine { state: Closed, .. }))
+                | (Playing, Some(Number { state: Closed, .. }))
                 | (Playing, Some(Mine { state: Closed, .. })) => {
                     img.set_attribute("src", "svg/question.svg")?
                 }
@@ -266,7 +344,7 @@ pub mod tests {
         props.insert("class".to_string(), "item".to_string());
         props.insert(
             "style".to_string(),
-            "width: 4.50%; margin: 0.25%".to_string(),
+            "width: 9.00%; margin: 0.5%".to_string(),
         );
         let expected_item = CellItem { props };
 

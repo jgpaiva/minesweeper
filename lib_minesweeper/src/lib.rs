@@ -38,6 +38,7 @@ impl Point {
 #[derive(Debug, PartialEq, Clone)]
 pub enum BoardState {
     NotReady,
+    Ready,
     Playing,
     Won,
     Failed,
@@ -113,7 +114,11 @@ impl Board {
             state: if missing_points == 0 {
                 BoardState::Won
             } else {
-                self.state.clone()
+                if matches!(self.state, BoardState::Ready) {
+                    BoardState::Playing
+                } else {
+                    self.state.clone()
+                }
             },
         }
     }
@@ -266,7 +271,7 @@ pub fn numbers_on_board(board: Board) -> Board {
         .collect();
     Board {
         map,
-        state: BoardState::Playing,
+        state: BoardState::Ready,
         ..board
     }
 }
@@ -416,7 +421,7 @@ pub mod tests {
             ],
         );
         assert_eq!(board.map, expected_map);
-        assert_eq!(board.state, BoardState::Playing);
+        assert_eq!(board.state, BoardState::Ready);
     }
 
     #[test]
