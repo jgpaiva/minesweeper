@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use lib_minesweeper::create_board;
 use lib_minesweeper::numbers_on_board;
 use lib_minesweeper::Board;
-use lib_minesweeper::BoardState;
+use lib_minesweeper::BoardState::Failed;
+use lib_minesweeper::BoardState::NotReady;
+use lib_minesweeper::BoardState::Playing;
+use lib_minesweeper::BoardState::Won;
 use lib_minesweeper::MapElement::Mine;
 use lib_minesweeper::MapElement::Number;
 use lib_minesweeper::MapElementCellState::Closed;
@@ -52,6 +55,7 @@ fn create_item(width: usize, height: usize) -> CellItem {
 extern crate lazy_static;
 use std::sync::Mutex;
 
+#[derive(Debug, PartialEq, Clone)]
 enum Mode {
     Flagging,
     Digging,
@@ -99,12 +103,22 @@ fn create_structure() -> Result<(), JsValue> {
 
     let div = document.create_element("div")?;
     div.set_attribute("class", "flex-container")?;
-    div.set_attribute("id", "button_placeholder")?;
+    div.set_attribute("id", "mode_button_placeholder")?;
     let button = document.create_element("div")?;
     button.set_attribute("id", "mode-button")?;
     button.set_attribute("class", "item")?;
     div.append_child(&button).unwrap();
     body.append_child(&div).unwrap();
+
+    //let div = document.create_element("div")?;
+    //div.set_attribute("class", "flex-container")?;
+    //div.set_attribute("id", "difficulty_button_placeholder")?;
+    //let button = document.create_element("div")?;
+    //button.set_attribute("id", "difficulty-button")?;
+    //button.set_attribute("class", "clickable item")?;
+    //button.set_inner_html("😀🤨🧐");
+    //div.append_child(&button).unwrap();
+    //body.append_child(&div).unwrap();
 
     let div = document.create_element("div")?;
     div.set_attribute("id", "board_game_placeholder")?;
@@ -119,14 +133,15 @@ fn create_structure() -> Result<(), JsValue> {
 pub fn render_page() -> Result<(), JsValue> {
     let board = BOARD.lock().unwrap();
     let mode = MODE.lock().unwrap();
+    let is_done = matches!(board.state, Failed | Won);
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
     let body = document.body().expect("document should have a body");
     match board.state {
-        BoardState::Playing => body.set_attribute("class", "ongoing"),
-        BoardState::Won => body.set_attribute("class", "won"),
-        BoardState::Failed => body.set_attribute("class", "failed"),
-        BoardState::NotReady => unreachable!(),
+        Playing => body.set_attribute("class", "ongoing"),
+        Won => body.set_attribute("class", "won"),
+        Failed => body.set_attribute("class", "failed"),
+        NotReady => unreachable!(),
     }?;
 
     let mode_button = document.get_element_by_id("mode-button").unwrap();
@@ -135,12 +150,15 @@ pub fn render_page() -> Result<(), JsValue> {
         .expect("should be able to remove this item");
     let mode_button = document.create_element("div")?;
     mode_button.set_attribute("id", "mode-button")?;
-    mode_button.set_attribute("class", "clickable item")?;
+    mode_button.set_attribute("class", if is_done { "item" } else { "clickable item" })?;
     let img = document.create_element("img")?;
     img.set_attribute("style", "width: 2em; height:2em")?;
-    let button_image = match *mode {
-        Mode::Flagging => "svg/flag.svg",
-        Mode::Digging => "svg/dig.svg",
+    let button_image = match (&board.state, mode.clone()) {
+        (Playing, Mode::Flagging) => "svg/flag.svg",
+        (Playing, Mode::Digging) => "svg/dig.svg",
+        (Won, _) => "svg/trophy.svg",
+        (Failed, _) => "svg/skull.svg",
+        _ => unreachable!(),
     };
     let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
         toggle_mode();
@@ -166,7 +184,6 @@ pub fn render_page() -> Result<(), JsValue> {
             let x = x as i32;
             let y = y as i32;
             let inner_div = document.create_element("div")?;
-            let is_done = matches!(board.state, BoardState::Failed | BoardState::Won);
             if !is_done {
                 let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
                     update_board(Point { x, y });
@@ -190,19 +207,20 @@ pub fn render_page() -> Result<(), JsValue> {
             div.append_child(&inner_div).unwrap();
             let img = document.create_element("img")?;
             img.set_attribute("style", "width: 100%; height:auto")?;
-            match (is_done, board.at(&Point { x, y })) {
-                (false, Some(Number { state: Flagged, .. }))
-                | (false, Some(Mine { state: Flagged, .. })) => {
+            match (&board.state, board.at(&Point { x, y })) {
+                (Playing, Some(Number { state: Flagged, .. }))
+                | (Playing, Some(Mine { state: Flagged, .. })) => {
                     img.set_attribute("src", "svg/flag.svg")?
                 }
-                (false, Some(Number { state: Closed, .. }))
-                | (false, Some(Mine { state: Closed, .. })) => {
+                (Playing, Some(Number { state: Closed, .. }))
+                | (Playing, Some(Mine { state: Closed, .. })) => {
                     img.set_attribute("src", "svg/question.svg")?
                 }
                 (_, Some(Number { count, .. })) => {
                     img.set_attribute("src", &format!("svg/{}.svg", *count))?
                 }
-                (_, Some(Mine { .. })) => img.set_attribute("src", "svg/bomb.svg")?,
+                (Failed, Some(Mine { .. })) => img.set_attribute("src", "svg/bomb.svg")?,
+                (Won, Some(Mine { .. })) => img.set_attribute("src", "svg/flag.svg")?,
                 _ => unreachable!(),
             };
             inner_div.append_child(&img).unwrap();
