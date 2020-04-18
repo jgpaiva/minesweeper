@@ -100,7 +100,7 @@ fn create_structure() -> Result<(), JsValue> {
     let div = document.create_element("div")?;
     div.set_attribute("class", "flex-container")?;
     div.set_attribute("id", "button_placeholder")?;
-    let button = document.create_element("button")?;
+    let button = document.create_element("div")?;
     button.set_attribute("id", "mode-button")?;
     button.set_attribute("class", "item")?;
     div.append_child(&button).unwrap();
@@ -133,7 +133,7 @@ pub fn render_page() -> Result<(), JsValue> {
     let div = mode_button.parent_node().unwrap();
     div.remove_child(&mode_button)
         .expect("should be able to remove this item");
-    let mode_button = document.create_element("button")?;
+    let mode_button = document.create_element("div")?;
     mode_button.set_attribute("id", "mode-button")?;
     mode_button.set_attribute("class", "item")?;
     let img = document.create_element("img")?;
@@ -165,7 +165,7 @@ pub fn render_page() -> Result<(), JsValue> {
         for x in 0..board.width {
             let x = x as i32;
             let y = y as i32;
-            let inner_div = document.create_element("button")?;
+            let inner_div = document.create_element("div")?;
             let is_done = matches!(board.state, BoardState::Failed | BoardState::Won);
             if !is_done {
                 let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
