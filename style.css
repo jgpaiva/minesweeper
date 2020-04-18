@@ -24,7 +24,7 @@
 }
 
 .clickable {
-    background-color: #2eebff;
+    border: 0.1em solid #2eebff;
 }
 
 .active {
