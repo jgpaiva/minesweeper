@@ -1,7 +1,8 @@
 .flex-container {
     display:flex;
     flex-flow: row wrap;
-    margin: 5%
+    margin: 5%;
+    justify-content: center;
 }
 
 .break {
