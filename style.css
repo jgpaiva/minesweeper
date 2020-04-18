@@ -23,6 +23,10 @@
     font-size: 40px;
 }
 
+.clickable {
+    background-color: #2eebff;
+}
+
 .active {
     background-color: #beebf6;
 }

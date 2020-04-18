@@ -135,7 +135,7 @@ pub fn render_page() -> Result<(), JsValue> {
         .expect("should be able to remove this item");
     let mode_button = document.create_element("div")?;
     mode_button.set_attribute("id", "mode-button")?;
-    mode_button.set_attribute("class", "item")?;
+    mode_button.set_attribute("class", "clickable item")?;
     let img = document.create_element("img")?;
     img.set_attribute("style", "width: 2em; height:2em")?;
     let button_image = match *mode {
