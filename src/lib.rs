@@ -365,22 +365,7 @@ impl Component for Model {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::ToggleDifficulty => {
-                self.state = match self.state.difficulty {
-                    Difficulty::Easy => State {
-                        difficulty: Difficulty::Medium,
-                        ..self.state.clone()
-                    },
-                    Difficulty::Medium => State {
-                        difficulty: Difficulty::Hard,
-                        ..self.state.clone()
-                    },
-                    Difficulty::Hard => State {
-                        difficulty: Difficulty::Easy,
-                        ..self.state.clone()
-                    },
-                }
-            }
+            Msg::ToggleDifficulty => self.toggle_difficulty(),
             Msg::ToggleMode => {
                 self.state = match self.state.mode {
                     Mode::Digging => State {
@@ -439,6 +424,25 @@ impl Component for Model {
 }
 
 impl Model {
+    fn toggle_difficulty(&mut self) {
+        let (new_board, new_difficulty) = match (
+            self.state.board.state.clone(),
+            self.state.difficulty.clone(),
+        ) {
+            (Ready, Difficulty::Easy) => (medium_board(), Difficulty::Medium),
+            (Ready, Difficulty::Medium) => (large_board(), Difficulty::Hard),
+            (Ready, Difficulty::Hard) => (small_board(), Difficulty::Easy),
+            (_, Difficulty::Easy) => (small_board(), Difficulty::Easy),
+            (_, Difficulty::Medium) => (medium_board(), Difficulty::Medium),
+            (_, Difficulty::Hard) => (large_board(), Difficulty::Hard),
+        };
+        self.state = State {
+            difficulty: new_difficulty,
+            board: new_board,
+            ..self.state.clone()
+        }
+    }
+
     fn view_difficulty(&self) -> Html {
         html! {
             match self.state.difficulty {
