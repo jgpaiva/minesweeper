@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq, Clone)]
+use serde_derive::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MapElement {
     Mine {
         state: MapElementCellState,
@@ -8,7 +10,7 @@ pub enum MapElement {
         count: i32,
     },
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MapElementCellState {
     Closed,
     Open,
@@ -21,7 +23,7 @@ use MapElementCellState::Closed;
 use MapElementCellState::Flagged;
 use MapElementCellState::Open;
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -35,7 +37,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum BoardState {
     NotReady,
     Ready,
@@ -44,7 +46,7 @@ pub enum BoardState {
     Failed,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Board {
     map: Vec<Vec<MapElement>>,
     missing_points: i32,

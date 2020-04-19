@@ -9,6 +9,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 colored = "1.9.3"
+serde = "1"
+serde_derive = "1"
 
 [dependencies.rand]
 version = "0.7.3"

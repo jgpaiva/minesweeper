@@ -16,6 +16,11 @@ members = [
 path = "lib_minesweeper"
 
 [dependencies]
+strum = "0.13"
+strum_macros = "0.13"
+serde = "1"
+serde_derive = "1"
+
 lazy_static = "1.4.0"
 wasm-bindgen = "0.2.60"
 log = "0.4.8"
@@ -29,12 +34,11 @@ gloo = "0.2.0"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.1", optional = true }
 
-# `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
-# compared to the default allocator's ~10K. It is slower than the default
-# allocator, however.
-#
-# Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
-wee_alloc = { version = "0.4.2", optional = true }
+[dependencies.yew]
+version = "0.14.3"
+features = [
+"web_sys"
+]
 
 [dependencies.rand]
 version = "0.7.3"

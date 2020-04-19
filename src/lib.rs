@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 use std::collections::HashMap;
 
 use lib_minesweeper::create_board;
@@ -16,6 +18,11 @@ use lib_minesweeper::Point;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+
+use serde_derive::{Deserialize, Serialize};
+use yew::format::Json;
+use yew::prelude::*;
+use yew::services::storage::{Area, StorageService};
 
 #[derive(Debug, PartialEq)]
 struct SvgSquare {
@@ -82,13 +89,13 @@ fn create_item(width: usize, _height: usize) -> CellItem {
 extern crate lazy_static;
 use std::sync::Mutex;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum Mode {
     Flagging,
     Digging,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum Difficulty {
     Easy,
     Medium,
@@ -312,10 +319,190 @@ pub fn render_page() -> Result<(), JsValue> {
     Ok(())
 }
 
+struct Model {
+    link: ComponentLink<Self>,
+    storage: StorageService,
+    state: State,
+}
+
+enum Msg {
+    ToggleDifficulty,
+    ToggleMode,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct State {
+    difficulty: Difficulty,
+    mode: Mode,
+    board: Board,
+}
+
+const KEY: &'static str = "jgpaiva.minesweeper.self";
+
+impl Component for Model {
+    type Message = Msg;
+    type Properties = ();
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
+        //        let difficulty = {
+        //            if let Json(Ok(restored_model)) = storage.restore(KEY) {
+        //                restored_model
+        //            } else {
+        //
+        //            }
+        //        };
+        let state = State {
+            difficulty: Difficulty::Easy,
+            mode: Mode::Digging,
+            board: small_board(),
+        };
+        Self {
+            link,
+            storage,
+            state,
+        }
+    }
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::ToggleDifficulty => {
+                self.state = match self.state.difficulty {
+                    Difficulty::Easy => State {
+                        difficulty: Difficulty::Medium,
+                        ..self.state.clone()
+                    },
+                    Difficulty::Medium => State {
+                        difficulty: Difficulty::Hard,
+                        ..self.state.clone()
+                    },
+                    Difficulty::Hard => State {
+                        difficulty: Difficulty::Easy,
+                        ..self.state.clone()
+                    },
+                }
+            }
+            Msg::ToggleMode => {
+                self.state = match self.state.mode {
+                    Mode::Digging => State {
+                        mode: Mode::Flagging,
+                        ..self.state.clone()
+                    },
+                    Mode::Flagging => State {
+                        mode: Mode::Digging,
+                        ..self.state.clone()
+                    },
+                }
+            }
+        }
+        true
+    }
+
+    fn view(&self) -> Html {
+        html! {
+            <body>
+                <div id="difficulty_button_placeholder" class="flex-container">
+                <div
+                    id="difficulty-button"
+                    class="clickable item"
+                    onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
+                    { self.view_difficulty() }
+                    </div>
+                </div>
+                <div id="mode_button_placeholder" class="flex-container">
+                    <div
+                        id="mode-button"
+                        class="clickable item"
+                        onclick=self.link.callback(|_| Msg::ToggleMode) >
+                        <img class="svg_container" src={ self.view_mode() } />
+                    </div>
+                </div>
+
+                <div id="board_game_placeholder">
+                    <div id="board_game" class="flex-container">
+                        {
+                            (0..self.state.board.height)
+                                .flat_map(|y| {
+                                                (0..self.state.board.width+1).map(move |x| {
+                                                    if x == self.state.board.width{
+                                                        self.view_break()
+                                                    } else {
+                                                        self.view_item(x,y)
+                                                    }
+                                                })
+                                }).collect::<Html>()
+                        }
+                    </div>
+                </div>
+            </body>
+        }
+    }
+}
+
+impl Model {
+    fn view_difficulty(&self) -> Html {
+        html! {
+            match self.state.difficulty {
+                Difficulty::Easy => "😀",
+                Difficulty::Medium => "🤨",
+                Difficulty::Hard => "🧐",
+            }
+        }
+    }
+
+    fn view_mode(&self) -> &str {
+        match self.state.mode {
+            Mode::Flagging => "svg/flag.svg",
+            Mode::Digging => "svg/dig.svg",
+        }
+    }
+
+    fn view_item(&self, x: usize, y: usize) -> Html {
+        let x = x as i32;
+        let y = y as i32;
+        let p = Point { x, y };
+        html! {
+            <div class="item active">
+                <img class="svg_container" src={
+                    match (self.state.board.state.clone(), self.state.board.at(&Point { x, y })) {
+                        (Ready, Some(Number { state: Flagged, .. }))
+                            | (Ready, Some(Mine { state: Flagged, .. }))
+                            | (Playing, Some(Number { state: Flagged, .. }))
+                            | (Playing, Some(Mine { state: Flagged, .. })) => {
+                                String::from("svg/flag.svg")
+                            }
+                        (Ready, Some(Number { state: Closed, .. }))
+                            | (Ready, Some(Mine { state: Closed, .. }))
+                            | (Playing, Some(Number { state: Closed, .. }))
+                            | (Playing, Some(Mine { state: Closed, .. })) => {
+                                String::from("svg/question.svg")
+                            }
+                        (_, Some(Number { count, .. })) => {
+                            format!("svg/{}.svg", *count)
+                        }
+                        (Failed, Some(Mine { .. })) => String::from("svg/bomb.svg"),
+                        (Won, Some(Mine { .. })) => String::from("svg/flag.svg"),
+                        _ => unreachable!(),
+                    }
+                }/>
+            </div>
+        }
+    }
+
+    fn view_break(&self) -> Html {
+        html! {
+            <div class="break">
+            </div>
+        }
+    }
+}
+
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
     create_structure()?;
     render_page()
+    //yew::initialize();
+    //App::<Model>::new().mount_as_body();
+    //Ok(())
 }
 
 #[cfg(test)]
