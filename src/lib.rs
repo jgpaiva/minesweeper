@@ -465,8 +465,8 @@ impl Model {
         let y = y as i32;
         let p = Point { x, y };
         html! {
-            <div class="item active">
-                <img class="svg_container" src={
+            <div class="item active", style={self.get_item_style()}>
+                <img style="width:100%" src={
                     match (self.state.board.state.clone(), self.state.board.at(&Point { x, y })) {
                         (Ready, Some(Number { state: Flagged, .. }))
                             | (Ready, Some(Mine { state: Flagged, .. }))
@@ -490,6 +490,14 @@ impl Model {
                 }/>
             </div>
         }
+    }
+
+    fn get_item_style(&self) -> String {
+        let square_size: f64 = 100.0 / (self.state.board.width as f64);
+        let margin: f64 = 0.05 * square_size;
+        let width = format!("{:.2}", square_size - 2.0 * margin);
+
+        format!("width: {}%; margin: {}%", width, margin)
     }
 
     fn view_break(&self) -> Html {
