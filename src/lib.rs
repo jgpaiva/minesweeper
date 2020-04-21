@@ -122,18 +122,7 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::ToggleDifficulty => self.toggle_difficulty(),
-            Msg::ToggleMode => {
-                self.state = match self.state.mode {
-                    Mode::Digging => State {
-                        mode: Mode::Flagging,
-                        ..self.state.clone()
-                    },
-                    Mode::Flagging => State {
-                        mode: Mode::Digging,
-                        ..self.state.clone()
-                    },
-                }
-            }
+            Msg::ToggleMode => self.toggle_mode(),
             Msg::UpdateBoard { point } => self.update_board(point),
         }
         true
@@ -153,7 +142,7 @@ impl Component for Model {
                 <div id="mode_button_placeholder" class="flex-container">
                     <div
                         id="mode-button"
-                        class="clickable item"
+                        class={self.view_mode_class()}
                         onclick=self.link.callback(|_| Msg::ToggleMode) >
                         <img class="svg_container" src={ self.view_mode() } />
                     </div>
@@ -208,6 +197,21 @@ impl Model {
             ..self.state.clone()
         }
     }
+    fn toggle_mode(&mut self) {
+        if matches!(self.state.board.state, Won | Failed) {
+            return;
+        }
+        self.state = match self.state.mode {
+            Mode::Digging => State {
+                mode: Mode::Flagging,
+                ..self.state.clone()
+            },
+            Mode::Flagging => State {
+                mode: Mode::Digging,
+                ..self.state.clone()
+            },
+        }
+    }
 
     fn view_body_class(&self) -> &str {
         match self.state.board.state {
@@ -225,6 +229,13 @@ impl Model {
                 Difficulty::Medium => "🤨",
                 Difficulty::Hard => "🧐",
             }
+        }
+    }
+
+    fn view_mode_class(&self) -> &str {
+        match &self.state.board.state {
+            Won | Failed => "item",
+            _ => "clickable item",
         }
     }
 
