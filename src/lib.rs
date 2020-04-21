@@ -14,6 +14,7 @@ use lib_minesweeper::MapElement::Mine;
 use lib_minesweeper::MapElement::Number;
 use lib_minesweeper::MapElementCellState::Closed;
 use lib_minesweeper::MapElementCellState::Flagged;
+use lib_minesweeper::MapElementCellState::Open;
 use lib_minesweeper::Point;
 
 use wasm_bindgen::prelude::*;
@@ -84,6 +85,7 @@ enum Msg {
     ToggleDifficulty,
     ToggleMode,
     UpdateBoard { point: Point },
+    RunRobot,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -124,6 +126,7 @@ impl Component for Model {
             Msg::ToggleDifficulty => self.toggle_difficulty(),
             Msg::ToggleMode => self.toggle_mode(),
             Msg::UpdateBoard { point } => self.update_board(point),
+            Msg::RunRobot => self.run_robot(),
         }
         true
     }
@@ -132,12 +135,12 @@ impl Component for Model {
         html! {
             <body class={self.view_body_class()}>
                 <div id="difficulty_button_placeholder" class="flex-container">
-                <div
-                    id="difficulty-button"
-                    class="clickable item"
-                    onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
-                    { self.view_difficulty() }
-                    </div>
+                    <div
+                        id="difficulty-button"
+                        class="clickable item"
+                        onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
+                        { self.view_difficulty() }
+                        </div>
                 </div>
                 <div id="mode_button_placeholder" class="flex-container">
                     <div
@@ -145,6 +148,12 @@ impl Component for Model {
                         class={self.view_mode_class()}
                         onclick=self.link.callback(|_| Msg::ToggleMode) >
                         <img class="svg_container" src={ self.view_mode() } />
+                    </div>
+                    <div
+                        id="robot-button"
+                        class={self.view_mode_class()}
+                        onclick=self.link.callback(|_| Msg::RunRobot) >
+                        { "🤖" }
                     </div>
                 </div>
 
@@ -266,6 +275,64 @@ impl Model {
             }
             Mode::Flagging => {
                 self.state.board = self.state.board.flag_item(&p);
+            }
+        }
+    }
+
+    fn run_robot(&mut self) {
+        if matches!(self.state.board.state, Won | Failed) {
+            return;
+        }
+        let board = &self.state.board;
+        for x in 0..board.width {
+            for y in 0..board.height {
+                let p = Point::new(x, y);
+                let el = board.at(&p).unwrap();
+                match el {
+                    Number {
+                        state: Open,
+                        count: mine_count,
+                    } if *mine_count > 0 => {
+                        let surrounding_points = board.surrounding_points(&p);
+                        let surrounding_els: Vec<(&Point, MapElement)> = surrounding_points
+                            .iter()
+                            .map(|p| (p, board.at(&p).unwrap().clone()))
+                            .filter(|(_p, el)| {
+                                !matches!(
+                                    el,
+                                    Number {
+                                        state: Open,
+                                        count: 0
+                                    }
+                                )
+                            })
+                            .collect();
+                        let unopened = surrounding_els
+                            .iter()
+                            .filter(|(_p, el)| !matches!(el, Number{state:Open,..}));
+                        let flagged = surrounding_els.iter().filter(
+                            |(_p, el)| matches!(el, Mine{state:Flagged} | Number{state:Flagged,..}),
+                        );
+                        let unopened_count = unopened.clone().count();
+                        let flagged_count = flagged.count();
+
+                        if *mine_count == unopened_count as i32 && flagged_count < unopened_count {
+                            let (p,_el) = unopened.filter(|(_p,el)| !matches!(el, Mine{state:Flagged} | Number{state:Flagged,..})).next().unwrap();
+                            self.state.board = self.state.board.flag_item(&p);
+                            return;
+                        }
+
+                        if *mine_count == flagged_count as i32 && unopened_count - flagged_count > 0
+                        {
+                            let (p,_el) = unopened.filter(|(_p,el)| !matches!(el, Mine{state:Flagged} | Number{state:Flagged,..})).next().unwrap();
+                            if let Some(b) = self.state.board.cascade_open_item(&p) {
+                                self.state.board = b;
+                                return;
+                            }
+                        }
+                    }
+                    _ => (),
+                }
             }
         }
     }

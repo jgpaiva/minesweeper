@@ -40,6 +40,8 @@
 	  text-decoration:none;
     height:2em;
     width:2em;
+    margin-left: 1em;
+    margin-right: 1em;
 }
 .clickable:active {
 	  position:relative;
