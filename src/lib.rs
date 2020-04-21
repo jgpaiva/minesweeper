@@ -3,11 +3,13 @@
 use lib_minesweeper::create_board;
 use lib_minesweeper::numbers_on_board;
 use lib_minesweeper::Board;
+use lib_minesweeper::BoardState;
 use lib_minesweeper::BoardState::Failed;
 use lib_minesweeper::BoardState::NotReady;
 use lib_minesweeper::BoardState::Playing;
 use lib_minesweeper::BoardState::Ready;
 use lib_minesweeper::BoardState::Won;
+use lib_minesweeper::MapElement;
 use lib_minesweeper::MapElement::Mine;
 use lib_minesweeper::MapElement::Number;
 use lib_minesweeper::MapElementCellState::Closed;
@@ -15,12 +17,11 @@ use lib_minesweeper::MapElementCellState::Flagged;
 use lib_minesweeper::Point;
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 use serde_derive::{Deserialize, Serialize};
-use yew::format::Json;
+//use yew::format::Json;
 use yew::prelude::*;
-use yew::services::storage::{Area, StorageService};
+//use yew::services::storage::{Area, StorageService};
 
 fn small_board() -> Board {
     use rand::Rng;
@@ -60,9 +61,6 @@ fn large_board() -> Board {
 
     numbers_on_board(board)
 }
-#[macro_use]
-extern crate lazy_static;
-use std::sync::Mutex;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum Mode {
@@ -78,7 +76,7 @@ enum Difficulty {
 }
 struct Model {
     link: ComponentLink<Self>,
-    storage: StorageService,
+    //storage: StorageService,
     state: State,
 }
 
@@ -95,13 +93,13 @@ pub struct State {
     board: Board,
 }
 
-const KEY: &'static str = "jgpaiva.minesweeper.self";
+//const KEY: &'static str = "jgpaiva.minesweeper.self";
 
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
+        //let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
         //        let difficulty = {
         //            if let Json(Ok(restored_model)) = storage.restore(KEY) {
         //                restored_model
@@ -116,7 +114,7 @@ impl Component for Model {
         };
         Self {
             link,
-            storage,
+            //storage,
             state,
         }
     }
@@ -170,7 +168,16 @@ impl Component for Model {
                                                     if x == self.state.board.width{
                                                         self.view_break()
                                                     } else {
-                                                        self.view_item(x,y)
+                                                        let board = &self.state.board;
+                                                        html!{
+                                                            <BoardItem
+                                                                x={x}
+                                                                y={y}
+                                                                board_state={board.state.clone()}
+                                                                board_width={board.width}
+                                                                element={board.at(&Point::new(x,y)).unwrap()}
+                                                                update_signal={self.link.callback(|msg:Msg| msg)}/>
+                                                        }
                                                     }
                                                 })
                                 }).collect::<Html>()
@@ -222,56 +229,13 @@ impl Model {
     }
 
     fn view_mode(&self) -> &str {
-        match (&self.state.board.state,self.state.mode.clone()) {
+        match (&self.state.board.state, self.state.mode.clone()) {
             (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "svg/flag.svg",
             (Ready, Mode::Digging) | (Playing, Mode::Digging) => "svg/dig.svg",
             (Won, _) => "svg/trophy.svg",
             (Failed, _) => "svg/skull.svg",
             _ => unreachable!(),
         }
-    }
-
-    fn view_item(&self, x: usize, y: usize) -> Html {
-        let x = x as i32;
-        let y = y as i32;
-        let p = Point { x, y };
-        html! {
-            <div
-                class="item active",
-                style={self.get_item_style()}
-                onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point { x:x, y:y }}}) >
-                <img style="width:100%" src={
-                    match (self.state.board.state.clone(), self.state.board.at(&p)) {
-                        (Ready, Some(Number { state: Flagged, .. }))
-                            | (Ready, Some(Mine { state: Flagged, .. }))
-                            | (Playing, Some(Number { state: Flagged, .. }))
-                            | (Playing, Some(Mine { state: Flagged, .. })) => {
-                                String::from("svg/flag.svg")
-                            }
-                        (Ready, Some(Number { state: Closed, .. }))
-                            | (Ready, Some(Mine { state: Closed, .. }))
-                            | (Playing, Some(Number { state: Closed, .. }))
-                            | (Playing, Some(Mine { state: Closed, .. })) => {
-                                String::from("svg/question.svg")
-                            }
-                        (_, Some(Number { count, .. })) => {
-                            format!("svg/{}.svg", *count)
-                        }
-                        (Failed, Some(Mine { .. })) => String::from("svg/bomb.svg"),
-                        (Won, Some(Mine { .. })) => String::from("svg/flag.svg"),
-                        _ => unreachable!(),
-                    }
-                }/>
-            </div>
-        }
-    }
-
-    fn get_item_style(&self) -> String {
-        let square_size: f64 = 100.0 / (self.state.board.width as f64);
-        let margin: f64 = 0.05 * square_size;
-        let width = format!("{:.2}", square_size - 2.0 * margin);
-
-        format!("width: {}%; margin: {}%", width, margin)
     }
 
     fn view_break(&self) -> Html {
@@ -284,10 +248,7 @@ impl Model {
     fn update_board(&mut self, p: Point) {
         match self.state.mode {
             Mode::Digging => {
-                let new_board = self
-                    .state
-                    .board
-                    .cascade_open_item(&p);
+                let new_board = self.state.board.cascade_open_item(&p);
                 if let Some(b) = new_board {
                     self.state.board = b
                 }
@@ -296,6 +257,95 @@ impl Model {
                 self.state.board = self.state.board.flag_item(&p);
             }
         }
+    }
+}
+
+#[derive(Clone, Properties, PartialEq)]
+struct BoardItemProps {
+    x: usize,
+    y: usize,
+    board_state: BoardState,
+    board_width: usize,
+    element: MapElement,
+    update_signal: Callback<Msg>,
+}
+
+struct BoardItem {
+    link: ComponentLink<Self>,
+    props: BoardItemProps,
+}
+
+impl Component for BoardItem {
+    type Message = Msg;
+    type Properties = BoardItemProps;
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self { props, link }
+    }
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.props.x == props.x
+            && self.props.y == props.y
+            && self.props.board_state == props.board_state
+            && self.props.board_width == props.board_width
+            && self.props.element == props.element
+        {
+            false
+        } else {
+            self.props = props;
+            true
+        }
+    }
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::UpdateBoard { point } => self.props.update_signal.emit(Msg::UpdateBoard { point }),
+            _ => unreachable!(),
+        }
+        true
+    }
+
+    fn view(&self) -> Html {
+        let x = self.props.x;
+        let y = self.props.y;
+        html! {
+            <div
+                class="item active",
+                style={self.get_item_style()}
+                onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >
+                <img style="width:100%" src={
+                    match (&self.props.board_state, &self.props.element) {
+                        (Ready, Number { state: Flagged, .. })
+                            | (Ready, Mine { state: Flagged, .. })
+                            | (Playing, Number { state: Flagged, .. })
+                            | (Playing, Mine { state: Flagged, .. }) => {
+                                String::from("svg/flag.svg")
+                            }
+                        (Ready, Number { state: Closed, .. })
+                            | (Ready, Mine { state: Closed, .. })
+                            | (Playing, Number { state: Closed, .. })
+                            | (Playing, Mine { state: Closed, .. }) => {
+                                String::from("svg/question.svg")
+                            }
+                        (_, Number { count, .. }) => {
+                            format!("svg/{}.svg", count)
+                        }
+                        (Failed, Mine { .. }) => String::from("svg/bomb.svg"),
+                        (Won, Mine { .. }) => String::from("svg/flag.svg"),
+                        _ => unreachable!(),
+                    }
+                }/>
+            </div>
+        }
+    }
+}
+
+impl BoardItem {
+    fn get_item_style(&self) -> String {
+        let square_size: f64 = 100.0 / (self.props.board_width as f64);
+        let margin: f64 = 0.05 * square_size;
+        let width = format!("{:.2}", square_size - 2.0 * margin);
+
+        format!("width: {}%; margin: {}%", width, margin)
     }
 }
 

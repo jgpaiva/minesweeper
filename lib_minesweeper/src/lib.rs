@@ -30,7 +30,7 @@ pub struct Point {
 }
 
 impl Point {
-    fn new(x: usize, y: usize) -> Point {
+    pub fn new(x: usize, y: usize) -> Point {
         let x = x as i32;
         let y = y as i32;
         Point { x, y }
@@ -113,14 +113,10 @@ impl Board {
             mines: self.mines,
             missing_points,
             map,
-            state: if missing_points == 0 {
-                BoardState::Won
-            } else {
-                if matches!(self.state, BoardState::Ready) {
-                    BoardState::Playing
-                } else {
-                    self.state.clone()
-                }
+            state: match (missing_points, &self.state) {
+                (0, _) => BoardState::Won,
+                (_, BoardState::Ready) => BoardState::Playing,
+                _ => self.state.clone(),
             },
         }
     }
