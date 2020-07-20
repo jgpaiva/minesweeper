@@ -398,28 +398,56 @@ impl Component for BoardItem {
                 class="item active",
                 style={self.get_item_style()}
                 onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >
-                <img style="width:100%" src={
+                {
                     match (&self.props.board_state, &self.props.element) {
                         (Ready, Number { state: Flagged, .. })
                             | (Ready, Mine { state: Flagged, .. })
                             | (Playing, Number { state: Flagged, .. })
                             | (Playing, Mine { state: Flagged, .. }) => {
-                                String::from("svg/flag.svg")
+                                html! { <div style="width:100%; text-align:center"> {"🚩"} </div> }
                             }
                         (Ready, Number { state: Closed, .. })
                             | (Ready, Mine { state: Closed, .. })
                             | (Playing, Number { state: Closed, .. })
                             | (Playing, Mine { state: Closed, .. }) => {
-                                String::from("svg/question.svg")
+                                html! { <div style="width:100%; text-align:center"> {"❓"} </div> }
                             }
-                        (_, Number { count, .. }) => {
-                            format!("svg/{}.svg", count)
+                        (_, Number { count:0, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {""} </div> }
                         }
-                        (Failed, Mine { .. }) => String::from("svg/bomb.svg"),
-                        (Won, Mine { .. }) => String::from("svg/flag.svg"),
+                        (_, Number { count:1, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"1️⃣"} </div> }
+                        }
+                        (_, Number { count:2, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"2️⃣"} </div> }
+                        }
+                        (_, Number { count:3, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"3️⃣"} </div> }
+                        }
+                        (_, Number { count:4, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"4️⃣"} </div> }
+                        }
+                        (_, Number { count:5, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"5️⃣"} </div> }
+                        }
+                        (_, Number { count:6, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"6️⃣"} </div> }
+                        }
+                        (_, Number { count:7, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"7️⃣"} </div> }
+                        }
+                        (_, Number { count:8, .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"8️⃣"} </div> }
+                        }
+                        (Failed, Mine { .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"💣"} </div> }
+                        }
+                        (Won, Mine { .. }) => {
+                            html! { <div style="width:100%; text-align:center"> {"🚩"} </div> }
+                        }
                         _ => unreachable!(),
                     }
-                }/>
+                }
             </div>
         }
     }
