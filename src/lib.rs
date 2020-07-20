@@ -412,39 +412,17 @@ impl Component for BoardItem {
                             | (Playing, Mine { state: Closed, .. }) => {
                                 "❓"
                             }
-                        (_, Number { count:0, .. }) => {
-                            ""
-                        }
-                        (_, Number { count:1, .. }) => {
-                            "1️⃣"
-                        }
-                        (_, Number { count:2, .. }) => {
-                            "2️⃣"
-                        }
-                        (_, Number { count:3, .. }) => {
-                            "3️⃣"
-                        }
-                        (_, Number { count:4, .. }) => {
-                            "4️⃣"
-                        }
-                        (_, Number { count:5, .. }) => {
-                            "5️⃣"
-                        }
-                        (_, Number { count:6, .. }) => {
-                            "6️⃣"
-                        }
-                        (_, Number { count:7, .. }) => {
-                            "7️⃣"
-                        }
-                        (_, Number { count:8, .. }) => {
-                            "8️⃣"
-                        }
-                        (Failed, Mine { .. }) => {
-                            "💣"
-                        }
-                        (Won, Mine { .. }) => {
-                            "🚩"
-                        }
+                        (_, Number { count:0, .. }) => "",
+                        (_, Number { count:1, .. }) => "1️⃣",
+                        (_, Number { count:2, .. }) => "2️⃣",
+                        (_, Number { count:3, .. }) => "3️⃣",
+                        (_, Number { count:4, .. }) => "4️⃣",
+                        (_, Number { count:5, .. }) => "5️⃣",
+                        (_, Number { count:6, .. }) => "6️⃣",
+                        (_, Number { count:7, .. }) => "7️⃣",
+                        (_, Number { count:8, .. }) => "8️⃣",
+                        (Failed, Mine { .. }) => "💣",
+                        (Won, Mine { .. }) => "🚩",
                         _ => unreachable!(),
                     }
                 }
