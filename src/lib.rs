@@ -147,13 +147,13 @@ impl Component for Model {
                         id="mode-button"
                         class={self.view_mode_class()}
                         onclick=self.link.callback(|_| Msg::ToggleMode) >
-                        <img class="svg_container" src={ self.view_mode() } />
+                        { self.view_mode() }
                     </div>
                     <div
                         id="robot-button"
                         class={self.view_mode_class()}
                         onclick=self.link.callback(|_| Msg::RunRobot) >
-                        { "🤖" }
+                        { self.show_robot()}
                     </div>
                 </div>
 
@@ -250,11 +250,19 @@ impl Model {
 
     fn view_mode(&self) -> &str {
         match (&self.state.board.state, self.state.mode.clone()) {
-            (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "svg/flag.svg",
-            (Ready, Mode::Digging) | (Playing, Mode::Digging) => "svg/dig.svg",
-            (Won, _) => "svg/trophy.svg",
-            (Failed, _) => "svg/skull.svg",
+            (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "🚩",
+            (Ready, Mode::Digging) | (Playing, Mode::Digging) => "⛏️",
+            (Won, _) => "🏆",
+            (Failed, _) => "☠️",
             _ => unreachable!(),
+        }
+    }
+
+    fn show_robot(&self) -> &str {
+        if matches!(&self.state.board.state, Ready | Playing) {
+            "🤖"
+        } else {
+            ""
         }
     }
 
