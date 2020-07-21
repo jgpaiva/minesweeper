@@ -395,7 +395,21 @@ impl Component for BoardItem {
         let y = self.props.y;
         html! {
             <div
-                class="item active",
+             class={
+                 match(&self.props.board_state, &self.props.element) {
+                     (Ready, Number { state: Closed, .. })
+                         | (Ready, Mine { state: Closed, .. })
+                         | (Playing, Number { state: Closed, .. })
+                         | (Playing, Mine { state: Closed, .. }) => {
+                             String::from("item clickable2")
+                         },
+                     (Playing, Number {state: Open, count: count})
+                         | (Won,Number {count: count, ..})
+                         | (Failed,Number {count: count, ..}) => {
+                         format!("item not-clickable mines-{}", count)
+                     },
+                     _ => String::from("item not-clickable")
+             }},
                 style={self.get_item_style()}
                 onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >
                 <div style="width:100%; text-align:center"> {
@@ -404,25 +418,18 @@ impl Component for BoardItem {
                             | (Ready, Mine { state: Flagged, .. })
                             | (Playing, Number { state: Flagged, .. })
                             | (Playing, Mine { state: Flagged, .. }) => {
-                                "🚩"
+                                String::from("🚩")
                             }
                         (Ready, Number { state: Closed, .. })
                             | (Ready, Mine { state: Closed, .. })
                             | (Playing, Number { state: Closed, .. })
                             | (Playing, Mine { state: Closed, .. }) => {
-                                "❓"
+                                String::from("❓")
                             }
-                        (_, Number { count:0, .. }) => "",
-                        (_, Number { count:1, .. }) => "1️⃣",
-                        (_, Number { count:2, .. }) => "2️⃣",
-                        (_, Number { count:3, .. }) => "3️⃣",
-                        (_, Number { count:4, .. }) => "4️⃣",
-                        (_, Number { count:5, .. }) => "5️⃣",
-                        (_, Number { count:6, .. }) => "6️⃣",
-                        (_, Number { count:7, .. }) => "7️⃣",
-                        (_, Number { count:8, .. }) => "8️⃣",
-                        (Failed, Mine { .. }) => "💣",
-                        (Won, Mine { .. }) => "🚩",
+                        (_, Number { count:0, .. }) => String::from(""),
+                        (_, Number { count, .. }) => format!("{}",count),
+                        (Failed, Mine { .. }) => String::from("💣"),
+                        (Won, Mine { .. }) => String::from("🚩"),
                         _ => unreachable!(),
                     }
                 }
