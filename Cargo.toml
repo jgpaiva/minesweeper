@@ -3,7 +3,7 @@ name = "minesweeper"
 version = "0.1.0"
 authors = ["João Paiva <jgpaiva@gmail.com>"]
 edition = "2018"
-description="This is an attempt at building a minesweeper solver. Right now it is just a complete console and WASM implementation of the game and has no solver."
+description="This is an attempt at building a minesweeper solver. Right now it is just a complete console and WASM implementation of the game and has no solver. It features a really simplistic robot solver that can only work for the most obvious cases."
 repository="https://github.com/jgpaiva/minesweeper"
 license="MIT"
 
