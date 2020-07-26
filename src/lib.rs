@@ -17,11 +17,17 @@ use lib_minesweeper::MapElementCellState::Flagged;
 use lib_minesweeper::MapElementCellState::Open;
 use lib_minesweeper::Point;
 
+use std::time::Duration;
+
 use wasm_bindgen::prelude::*;
 
 use serde_derive::{Deserialize, Serialize};
 //use yew::format::Json;
 use yew::prelude::*;
+use yew::services::{ConsoleService, IntervalService};
+
+use js_sys::Date;
+
 //use yew::services::storage::{Area, StorageService};
 
 fn small_board() -> Board {
@@ -133,30 +139,35 @@ impl Component for Model {
 
     fn view(&self) -> Html {
         html! {
-            <body class={self.view_body_class()}>
+            <body class={self.render_body_class()}>
                 <div id="difficulty_button_placeholder" class="flex-container">
                     <div
-                        id="difficulty-button"
-                        class="clickable item"
-                        onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
-                        { self.view_difficulty() }
-                        </div>
-                </div>
-                <div id="mode_button_placeholder" class="flex-container">
-                    <div
-                        id="mode-button"
-                        class={self.view_mode_class()}
-                        onclick=self.link.callback(|_| Msg::ToggleMode) >
-                        { self.view_mode() }
+                     id="difficulty-button"
+                     class="clickable item"
+                     onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
+                        { self.render_difficulty() }
                     </div>
                     <div
-                        id="robot-button"
-                        class={self.view_mode_class()}
-                        onclick=self.link.callback(|_| Msg::RunRobot) >
-                        { self.show_robot()}
+                     id="mode-button"
+                     class={self.render_mode_class()}
+                     onclick=self.link.callback(|_| Msg::ToggleMode) >
+                        { self.render_mode() }
                     </div>
+                    <div
+                     id="robot-button"
+                     class={self.render_mode_class()}
+                     onclick=self.link.callback(|_| Msg::RunRobot) >
+                        { self.render_robot()}
+                    </div>
+                    <TimeKeeper op={
+                        match self.state.board.state {
+                            Won => TimeKeeperOp::Stopped,
+                            Failed => TimeKeeperOp::Stopped,
+                            Playing => TimeKeeperOp::Counting,
+                            Ready => TimeKeeperOp::Reset,
+                            NotReady => unreachable!(),
+                        }}/>
                 </div>
-
                 <div id="board_game_placeholder">
                     <div id="board_game" class="flex-container">
                         {
@@ -164,7 +175,7 @@ impl Component for Model {
                                 .flat_map(|y| {
                                                 (0..self.state.board.width+1).map(move |x| {
                                                     if x == self.state.board.width{
-                                                        self.view_break()
+                                                        self.render_break()
                                                     } else {
                                                         let board = &self.state.board;
                                                         html!{
@@ -222,7 +233,7 @@ impl Model {
         }
     }
 
-    fn view_body_class(&self) -> &str {
+    fn render_body_class(&self) -> &str {
         match self.state.board.state {
             Ready | Playing => "ongoing",
             Won => "won",
@@ -231,7 +242,7 @@ impl Model {
         }
     }
 
-    fn view_difficulty(&self) -> Html {
+    fn render_difficulty(&self) -> Html {
         html! {
             match self.state.difficulty {
                 Difficulty::Easy => "😀",
@@ -241,14 +252,14 @@ impl Model {
         }
     }
 
-    fn view_mode_class(&self) -> &str {
+    fn render_mode_class(&self) -> &str {
         match &self.state.board.state {
             Won | Failed => "item",
             _ => "clickable item",
         }
     }
 
-    fn view_mode(&self) -> &str {
+    fn render_mode(&self) -> &str {
         match (&self.state.board.state, self.state.mode.clone()) {
             (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "🚩",
             (Ready, Mode::Digging) | (Playing, Mode::Digging) => "⛏️",
@@ -258,7 +269,7 @@ impl Model {
         }
     }
 
-    fn show_robot(&self) -> &str {
+    fn render_robot(&self) -> &str {
         if matches!(&self.state.board.state, Ready | Playing) {
             "🤖"
         } else {
@@ -266,7 +277,7 @@ impl Model {
         }
     }
 
-    fn view_break(&self) -> Html {
+    fn render_break(&self) -> Html {
         html! {
             <div class="break">
             </div>
@@ -346,6 +357,132 @@ impl Model {
     }
 }
 
+#[derive(Copy, Clone, Properties, PartialEq)]
+struct TimeKeeperProps {
+    op: TimeKeeperOp,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+enum TimeKeeperOp {
+    Reset,
+    Counting,
+    Stopped,
+}
+
+struct TimeKeeperState {
+    started_at: Option<Date>,
+    stopped_at: Option<Date>,
+    _handle: yew::services::interval::IntervalTask,
+}
+
+struct TimeKeeper {
+    props: TimeKeeperProps,
+    state: TimeKeeperState,
+}
+
+enum TimeKeeperMsg {
+    Tick,
+}
+
+impl Component for TimeKeeper {
+    type Message = TimeKeeperMsg;
+    type Properties = TimeKeeperProps;
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let callback_tick = link.callback(|_| TimeKeeperMsg::Tick);
+        let mut interval_service = IntervalService::new();
+        let _handle = interval_service.spawn(Duration::from_millis(100), callback_tick);
+        let mut console = ConsoleService::new();
+        console.log("created TimeKeeper");
+
+        let state = TimeKeeperState {
+            started_at: None,
+            stopped_at: None,
+            _handle,
+        };
+        Self { state, props }
+    }
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        let mut console = ConsoleService::new();
+        let should_render = match (&self.props.op, props.op) {
+            (TimeKeeperOp::Counting, TimeKeeperOp::Reset)
+            | (TimeKeeperOp::Stopped, TimeKeeperOp::Reset) => {
+                self.state.started_at = None;
+                self.state.stopped_at = None;
+                console.log("reset TimeKeeper");
+                true
+            }
+            (TimeKeeperOp::Reset, TimeKeeperOp::Reset) => {
+                console.log("do nothing");
+                false
+            }
+            (TimeKeeperOp::Stopped, TimeKeeperOp::Counting)
+            | (TimeKeeperOp::Reset, TimeKeeperOp::Counting) => {
+                self.state.started_at = Some(Date::new_0());
+                console.log("started TimeKeeper");
+                true
+            }
+            (TimeKeeperOp::Counting, TimeKeeperOp::Counting) => true,
+            (TimeKeeperOp::Counting, TimeKeeperOp::Stopped) => {
+                self.state.stopped_at = Some(Date::new_0());
+                console.log("stopped TimeKeeper");
+                true
+            }
+            (TimeKeeperOp::Reset, TimeKeeperOp::Stopped) => {
+                self.state.started_at = Some(Date::new_0());
+                self.state.stopped_at = Some(Date::new_0());
+                console.log("stopped TimeKeeper");
+                true
+            }
+            (TimeKeeperOp::Stopped, TimeKeeperOp::Stopped) => {
+                console.log("do nothing");
+                false
+            }
+        };
+        self.props = props;
+        should_render
+    }
+
+    fn view(&self) -> Html {
+        html! {
+            <div id = "time_container" class= "item not-clickable">
+                <p> { self.render_timer() } </p>
+            </div>
+        }
+    }
+
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            TimeKeeperMsg::Tick => {}
+        }
+        true
+    }
+}
+
+impl TimeKeeper {
+    fn render_timer(&self) -> String {
+        match (&self.state.started_at, &self.state.stopped_at) {
+            (Some(started_at), None) => {
+                let now = Date::new_0();
+                format!(
+                    "{}",
+                    ((now.get_time() - started_at.get_time()) / 1000_f64)
+                        .round()
+                        .min(999_f64) // make sure we don't run out of space
+                )
+            }
+            (Some(started_at), Some(stopped_at)) => format!(
+                "{}",
+                ((stopped_at.get_time() - started_at.get_time()) / 1000_f64)
+                    .round()
+                    .min(999_f64) // make sure we don't run out of space
+            ),
+            (None, None) => String::from("0"),
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Clone, Properties, PartialEq)]
 struct BoardItemProps {
     x: usize,
@@ -406,9 +543,9 @@ impl Component for BoardItem {
                      (Playing, Number {state: Open, count: count})
                          | (Won,Number {count: count, ..})
                          | (Failed,Number {count: count, ..}) => {
-                         format!("item not-clickable mines-{}", count)
+                         format!("item not-clickable2 mines-{}", count)
                      },
-                     _ => String::from("item not-clickable")
+                     _ => String::from("item not-clickable2")
              }},
                 style={self.get_item_style()}
                 onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >

@@ -1,7 +1,9 @@
 # Minesweeper solver
 
 This is an attempt at building a minesweeper solver. Right now it is just a
-complete console and WASM implementation of the game and has no solver.
+complete console and WASM implementation of the game and has no solver. It
+features a really simplistic robot solver that can only work for the most
+obvious cases.t s
 
 ## Demo
 

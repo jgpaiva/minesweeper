@@ -23,16 +23,6 @@
     font-size: 40px;
 }
 
-.not-clickable {
-	  box-shadow:inset 0px 2px 0px 0px #ffffff;
-	  border-radius:10px;
-	  cursor:pointer;
-	  color:#666666;
-	  font-weight:bold;
-	  text-decoration:none;
-	  background:linear-gradient(to bottom, #f9f9f9 5%, #f9f9f9 100%);
-}
-
 .mines-1 {
     color: #5296a5;
 }
@@ -66,44 +56,67 @@
 }
 
 .clickable2 {
-	  box-shadow:inset 0px 2px 0px 0px #ffffff;
-	  background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
-	  border-radius:10px;
-	  cursor:pointer;
-	  color:#666666;
-	  font-weight:bold;
-	  text-decoration:none;
+    box-shadow:inset 0px 2px 0px 0px #ffffff;
+    background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
+    border-radius:10px;
+    cursor:pointer;
+    color:#666666;
+    font-weight:bold;
+    text-decoration:none;
 }
 .clickable2:active {
-	  position:relative;
-	  top:2px;
-	  box-shadow:inset 0px 0px 0px 0px #ffffff;
+    position:relative;
+    top:2px;
+    box-shadow:inset 0px 0px 0px 0px #ffffff;
+}
+
+.not-clickable2 {
+    box-shadow:inset 0px 2px 0px 0px #ffffff;
+    border-radius:10px;
+    cursor:pointer;
+    color:#666666;
+    font-weight:bold;
+    text-decoration:none;
+    background:linear-gradient(to bottom, #f9f9f9 5%, #f9f9f9 100%);
 }
 
 .clickable {
-	  box-shadow:inset 0px 2px 0px 0px #ffffff;
-	  background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
-	  background-color:#f9f9f9;
-	  border-radius:10px;
-	  border:2px solid #dcdcdc;
-	  cursor:pointer;
-	  color:#666666;
-	  font-weight:bold;
-	  text-decoration:none;
+    box-shadow:inset 0px 2px 0px 0px #ffffff;
+    background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
+    background-color:#f9f9f9;
+    border-radius:10px;
+    border:2px solid #dcdcdc;
+    cursor:pointer;
+    color:#666666;
+    font-weight:bold;
+    text-decoration:none;
+    height:2em;
+    width:2em;
+    margin-left: 1em;
+    margin-right: 1em;
+}
+
+.not-clickable {
+    box-shadow:inset 0px 2px 0px 0px #ffffff;
+    border-radius:10px;
+    cursor:pointer;
+    color:#666666;
+    font-weight:bold;
+    text-decoration:none;
+    background:linear-gradient(to bottom, #f9f9f9 5%, #f9f9f9 100%);
     height:2em;
     width:2em;
     margin-left: 1em;
     margin-right: 1em;
 }
 .clickable:active {
-	  position:relative;
-	  top:2px;
-	  box-shadow:inset 0px 0px 0px 0px #ffffff;
+    position:relative;
+    top:2px;
+    box-shadow:inset 0px 0px 0px 0px #ffffff;
+    background-color: #beebf6;
 }
 
-
-
-.active {
+.clickable2.active {
     background-color: #beebf6;
 }
 
