@@ -391,8 +391,6 @@ impl Component for TimeKeeper {
         let callback_tick = link.callback(|_| TimeKeeperMsg::Tick);
         let mut interval_service = IntervalService::new();
         let _handle = interval_service.spawn(Duration::from_millis(100), callback_tick);
-        let mut console = ConsoleService::new();
-        console.log("created TimeKeeper");
 
         let state = TimeKeeperState {
             started_at: None,
@@ -403,41 +401,30 @@ impl Component for TimeKeeper {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        let mut console = ConsoleService::new();
         let should_render = match (&self.props.op, props.op) {
             (TimeKeeperOp::Counting, TimeKeeperOp::Reset)
             | (TimeKeeperOp::Stopped, TimeKeeperOp::Reset) => {
                 self.state.started_at = None;
                 self.state.stopped_at = None;
-                console.log("reset TimeKeeper");
                 true
             }
-            (TimeKeeperOp::Reset, TimeKeeperOp::Reset) => {
-                console.log("do nothing");
-                false
-            }
+            (TimeKeeperOp::Reset, TimeKeeperOp::Reset) => false,
             (TimeKeeperOp::Stopped, TimeKeeperOp::Counting)
             | (TimeKeeperOp::Reset, TimeKeeperOp::Counting) => {
                 self.state.started_at = Some(Date::new_0());
-                console.log("started TimeKeeper");
                 true
             }
             (TimeKeeperOp::Counting, TimeKeeperOp::Counting) => true,
             (TimeKeeperOp::Counting, TimeKeeperOp::Stopped) => {
                 self.state.stopped_at = Some(Date::new_0());
-                console.log("stopped TimeKeeper");
                 true
             }
             (TimeKeeperOp::Reset, TimeKeeperOp::Stopped) => {
                 self.state.started_at = Some(Date::new_0());
                 self.state.stopped_at = Some(Date::new_0());
-                console.log("stopped TimeKeeper");
                 true
             }
-            (TimeKeeperOp::Stopped, TimeKeeperOp::Stopped) => {
-                console.log("do nothing");
-                false
-            }
+            (TimeKeeperOp::Stopped, TimeKeeperOp::Stopped) => false,
         };
         self.props = props;
         should_render
@@ -590,5 +577,7 @@ impl BoardItem {
 pub fn main() -> Result<(), JsValue> {
     yew::initialize();
     App::<Model>::new().mount_as_body();
+    let mut console = ConsoleService::new();
+    console.log("App initialized");
     Ok(())
 }
