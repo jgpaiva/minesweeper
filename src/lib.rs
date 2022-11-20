@@ -196,6 +196,10 @@ impl Component for Model {
             </body>
         }
     }
+
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        true
+    }
 }
 
 impl Model {
