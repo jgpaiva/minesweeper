@@ -49,7 +49,7 @@ fn main() {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Operation {
     Open { point: Point },
     Flag { point: Point },
@@ -102,7 +102,7 @@ fn print_board_state(board: &Board) {
 }
 
 fn colorized_print_map(board: &Board) {
-    print_board_state(&board);
+    print_board_state(board);
     let mut mapping = vec![];
     mapping.extend((b'0'..=b'9').map(char::from));
     mapping.extend((b'a'..=b'z').map(char::from));

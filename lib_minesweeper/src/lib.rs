@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum MapElement {
     Mine {
         state: MapElementCellState,
@@ -10,7 +10,7 @@ pub enum MapElement {
         count: i32,
     },
 }
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum MapElementCellState {
     Closed,
     Open,
@@ -23,7 +23,7 @@ use MapElementCellState::Closed;
 use MapElementCellState::Flagged;
 use MapElementCellState::Open;
 
-#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -37,7 +37,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum BoardState {
     NotReady,
     Ready,
@@ -46,7 +46,7 @@ pub enum BoardState {
     Failed,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Board {
     map: Vec<Vec<MapElement>>,
     missing_points: i32,
@@ -61,9 +61,9 @@ impl Board {
         let mines = map
             .iter()
             .flat_map(|x| x.iter())
-            .filter(|x| matches!(x, Mine{..}))
+            .filter(|x| matches!(x, Mine { .. }))
             .count();
-        let width = map.iter().next().unwrap().len();
+        let width = map.first().unwrap().len();
         let height = map.len();
         Board {
             width,
@@ -75,7 +75,7 @@ impl Board {
         }
     }
 
-    pub fn at(self: &Self, p: &Point) -> Option<&MapElement> {
+    pub fn at(&self, p: &Point) -> Option<&MapElement> {
         let width = self.width as i32;
         let height = self.height as i32;
         if p.x < 0 || p.x >= width || p.y < 0 || p.y >= height {
@@ -87,7 +87,7 @@ impl Board {
         }
     }
 
-    fn replace(self: &Self, p: &Point, el: MapElement) -> Board {
+    fn replace(&self, p: &Point, el: MapElement) -> Board {
         let was_closed = matches!(self.at(p), Some(Number { state: Closed, .. }));
         let map = (0..self.height)
             .map(|y| {
@@ -121,7 +121,7 @@ impl Board {
         }
     }
 
-    pub fn flag_item(self: &Self, p: &Point) -> Board {
+    pub fn flag_item(&self, p: &Point) -> Board {
         match self.at(p) {
             Some(Mine { state }) => self.replace(
                 p,
@@ -148,7 +148,7 @@ impl Board {
         }
     }
 
-    pub fn cascade_open_item(self: &Self, p: &Point) -> Option<Board> {
+    pub fn cascade_open_item(&self, p: &Point) -> Option<Board> {
         match self.at(p).unwrap() {
             Number { state: Open, .. }
             | Mine { state: Flagged, .. }
@@ -167,9 +167,9 @@ impl Board {
                 if *count == 0 {
                     Some(
                         board
-                            .surrounding_points(&p)
+                            .surrounding_points(p)
                             .iter()
-                            .fold(board, |b: Board, p| b.cascade_open_item(&p).unwrap_or(b)),
+                            .fold(board, |b: Board, p| b.cascade_open_item(p).unwrap_or(b)),
                     )
                 } else {
                     Some(board)
@@ -186,7 +186,7 @@ impl Board {
         }
     }
 
-    pub fn surrounding_points(self: &Self, p: &Point) -> Vec<Point> {
+    pub fn surrounding_points(&self, p: &Point) -> Vec<Point> {
         [p.x - 1, p.x, p.x + 1]
             .iter()
             .flat_map(|&x| {
@@ -377,9 +377,7 @@ pub mod tests {
         let height = 4;
         let mines = 4;
         let mut v = vec![3, 3, 2, 2, 1, 1, 0, 0];
-        let rand = move |_start: usize, _end: usize| -> usize {
-            return v.pop().unwrap();
-        };
+        let rand = move |_start: usize, _end: usize| -> usize { v.pop().unwrap() };
         let board = create_board(width, height, mines, rand);
         let expected_map = five_by_four_board().map;
         assert_eq!(board.map, expected_map);
@@ -392,9 +390,7 @@ pub mod tests {
         let height = 4;
         let mines = 4;
         let mut v = vec![3, 3, 2, 2, 0, 0, 1, 1, 0, 0];
-        let rand = move |_start: usize, _end: usize| -> usize {
-            return v.pop().unwrap();
-        };
+        let rand = move |_start: usize, _end: usize| -> usize { v.pop().unwrap() };
         let board = create_board(width, height, mines, rand);
         let expected_map = five_by_four_board().map;
         assert_eq!(board.map, expected_map);
