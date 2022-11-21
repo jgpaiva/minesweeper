@@ -184,7 +184,7 @@ impl Component for Model {
                                                                 y={y}
                                                                 board_state={board.state.clone()}
                                                                 board_width={board.width}
-                                                                element={board.at(&Point::new(x,y)).unwrap()}
+                                                                element={board.at(&Point::new(x,y)).unwrap().clone()}
                                                                 update_signal={self.link.callback(|msg:Msg| msg)}/>
                                                         }
                                                     }
@@ -237,13 +237,14 @@ impl Model {
         }
     }
 
-    fn render_body_class(&self) -> &str {
+    fn render_body_class(&self) -> String {
         match self.state.board.state {
             Ready | Playing => "ongoing",
             Won => "won",
             Failed => "failed",
             NotReady => unreachable!(),
         }
+        .into()
     }
 
     fn render_difficulty(&self) -> Html {
@@ -256,14 +257,14 @@ impl Model {
         }
     }
 
-    fn render_mode_class(&self) -> &str {
+    fn render_mode_class(&self) -> String {
         match &self.state.board.state {
-            Won | Failed => "item",
-            _ => "clickable item",
+            Won | Failed => "item".into(),
+            _ => "clickable item".into(),
         }
     }
 
-    fn render_mode(&self) -> &str {
+    fn render_mode(&self) -> String {
         match (&self.state.board.state, self.state.mode.clone()) {
             (Ready, Mode::Flagging) | (Playing, Mode::Flagging) => "🚩",
             (Ready, Mode::Digging) | (Playing, Mode::Digging) => "⛏️",
@@ -271,6 +272,7 @@ impl Model {
             (Failed, _) => "☠️",
             _ => unreachable!(),
         }
+        .into()
     }
 
     fn render_robot(&self) -> &str {
@@ -544,13 +546,13 @@ impl Component for BoardItem {
                          | (Playing, Mine { state: Closed, .. }) => {
                              String::from("item clickable2")
                          },
-                     (Playing, Number {state: Open, count: count})
-                         | (Won,Number {count: count, ..})
-                         | (Failed,Number {count: count, ..}) => {
+                     (Playing, Number {state: Open, count})
+                         | (Won,Number {count, ..})
+                         | (Failed,Number {count, ..}) => {
                          format!("item not-clickable2 mines-{}", count)
                      },
                      _ => String::from("item not-clickable2")
-             }},
+             }}
                 style={self.get_item_style()}
                 onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >
                 <div style="width:100%; text-align:center"> {
