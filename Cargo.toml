@@ -38,7 +38,7 @@ gloo = "0.2.0"
 console_error_panic_hook = { version = "0.1.1", optional = true }
 
 [dependencies.yew]
-version = "0.15"
+version = "0.17"
 features = [
 "web_sys"
 ]

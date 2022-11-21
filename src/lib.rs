@@ -407,8 +407,7 @@ impl Component for TimeKeeper {
     type Properties = TimeKeeperProps;
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback_tick = link.callback(|_| TimeKeeperMsg::Tick);
-        let mut interval_service = IntervalService::new();
-        let _handle = interval_service.spawn(Duration::from_millis(100), callback_tick);
+        let _handle = IntervalService::spawn(Duration::from_millis(100), callback_tick);
 
         let state = TimeKeeperState {
             started_at: None,
@@ -595,7 +594,6 @@ impl BoardItem {
 pub fn main() -> Result<(), JsValue> {
     yew::initialize();
     App::<Model>::new().mount_as_body();
-    let mut console = ConsoleService::new();
-    console.log("App initialized");
+    ConsoleService::log("App initialized");
     Ok(())
 }
