@@ -383,7 +383,6 @@ enum TimeKeeperOp {
 struct TimeKeeperState {
     started_at: Option<Date>,
     stopped_at: Option<Date>,
-    op: TimeKeeperOp,
     _handle: gloo_timers::callback::Interval,
 }
 
@@ -399,7 +398,6 @@ impl Component for TimeKeeper {
     type Message = TimeKeeperMsg;
     type Properties = TimeKeeperProps;
     fn create(ctx: &Context<Self>) -> Self {
-        let props = ctx.props();
         let link = ctx.link().clone();
         let _handle = gloo_timers::callback::Interval::new(100, move || {
             link.send_message(TimeKeeperMsg::Tick)
@@ -408,15 +406,14 @@ impl Component for TimeKeeper {
         let state = TimeKeeperState {
             started_at: None,
             stopped_at: None,
-            op: props.op,
             _handle,
         };
         Self { state }
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let props = ctx.props();
-        let should_render = match (&self.state.op, props.op) {
+        match (old_props.op, props.op) {
             (TimeKeeperOp::Counting, TimeKeeperOp::Reset)
             | (TimeKeeperOp::Stopped, TimeKeeperOp::Reset) => {
                 self.state.started_at = None;
@@ -440,9 +437,7 @@ impl Component for TimeKeeper {
                 true
             }
             (TimeKeeperOp::Stopped, TimeKeeperOp::Stopped) => false,
-        };
-        self.state.op = props.op;
-        should_render
+        }
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
@@ -495,50 +490,42 @@ struct BoardItemProps {
     update_signal: Callback<Msg>,
 }
 
-struct BoardItem {
-    props: BoardItemProps,
-}
+struct BoardItem {}
 
 impl Component for BoardItem {
     type Message = Msg;
     type Properties = BoardItemProps;
-    fn create(ctx: &Context<Self>) -> Self {
-        let props = ctx.props();
-        Self {
-            props: props.clone(),
-        }
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {}
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let props = ctx.props();
-        if self.props.x == props.x
-            && self.props.y == props.y
-            && self.props.board_state == props.board_state
-            && self.props.board_width == props.board_width
-            && self.props.element == props.element
-        {
-            false
-        } else {
-            self.props = props.clone();
-            true
-        }
+        !(old_props.x == props.x
+            && old_props.y == props.y
+            && old_props.board_state == props.board_state
+            && old_props.board_width == props.board_width
+            && old_props.element == props.element)
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::UpdateBoard { point } => self.props.update_signal.emit(Msg::UpdateBoard { point }),
+            Msg::UpdateBoard { point } => {
+                ctx.props().update_signal.emit(Msg::UpdateBoard { point })
+            }
             _ => unreachable!(),
         }
         true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let x = self.props.x;
-        let y = self.props.y;
+        let props = ctx.props();
+        let x = props.x;
+        let y = props.y;
         html! {
             <div
              class={
-                 match(&self.props.board_state, &self.props.element) {
+                 match(&props.board_state, &props.element) {
                      (Ready, Number { state: Closed, .. })
                          | (Ready, Mine { state: Closed, .. })
                          | (Playing, Number { state: Closed, .. })
@@ -552,10 +539,10 @@ impl Component for BoardItem {
                      },
                      _ => String::from("item not-clickable2")
              }}
-                style={self.get_item_style()}
+                style={self.get_item_style(ctx.props().board_width)}
                 onclick={ctx.link().callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}})} >
                 <div style="width:100%; text-align:center"> {
-                    match (&self.props.board_state, &self.props.element) {
+                    match (&props.board_state, &props.element) {
                         (Ready, Number { state: Flagged, .. })
                             | (Ready, Mine { state: Flagged, .. })
                             | (Playing, Number { state: Flagged, .. })
@@ -582,8 +569,8 @@ impl Component for BoardItem {
 }
 
 impl BoardItem {
-    fn get_item_style(&self) -> String {
-        let square_size: f64 = 100.0 / (self.props.board_width as f64);
+    fn get_item_style(&self, board_width: usize) -> String {
+        let square_size: f64 = 100.0 / (board_width as f64);
         let margin: f64 = 0.05 * square_size;
         let width = format!("{:.2}", square_size - 2.0 * margin);
 
