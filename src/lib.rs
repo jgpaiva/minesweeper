@@ -414,7 +414,7 @@ impl Component for TimeKeeper {
         Self { state }
     }
 
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
         let props = ctx.props();
         let should_render = match (&self.state.op, props.op) {
             (TimeKeeperOp::Counting, TimeKeeperOp::Reset)
@@ -509,7 +509,7 @@ impl Component for BoardItem {
         }
     }
 
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
         let props = ctx.props();
         if self.props.x == props.x
             && self.props.y == props.y
@@ -595,7 +595,7 @@ impl BoardItem {
 pub fn main() -> Result<(), JsValue> {
     //yew::initialize();
     //App::<Model>::new().mount_as_body();
-    yew::start_app::<Model>();
+    yew::Renderer::<Model>::default().render();
 
     gloo::console::log!("App initialized");
     Ok(())
