@@ -34,7 +34,7 @@ fn small_board() -> Board {
     let mines = 10;
 
     let board = create_board(width, height, mines, |x, y| {
-        rand::thread_rng().gen_range(x, y)
+        rand::thread_rng().gen_range(x..y)
     });
 
     numbers_on_board(board)
@@ -47,7 +47,7 @@ fn medium_board() -> Board {
     let mines = 40;
 
     let board = create_board(width, height, mines, |x, y| {
-        rand::thread_rng().gen_range(x, y)
+        rand::thread_rng().gen_range(x..y)
     });
 
     numbers_on_board(board)
@@ -60,7 +60,7 @@ fn large_board() -> Board {
     let mines = 99;
 
     let board = create_board(width, height, mines, |x, y| {
-        rand::thread_rng().gen_range(x, y)
+        rand::thread_rng().gen_range(x..y)
     });
 
     numbers_on_board(board)
