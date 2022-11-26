@@ -19,7 +19,7 @@ fn main() {
     let mines = 10;
 
     let board = create_board(width, height, mines, |x, y| {
-        rand::thread_rng().gen_range(x, y)
+        rand::thread_rng().gen_range(x..y)
     });
 
     let mut board = numbers_on_board(board);

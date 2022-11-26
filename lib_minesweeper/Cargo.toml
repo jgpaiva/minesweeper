@@ -13,7 +13,7 @@ serde = "1"
 serde_derive = "1"
 
 [dependencies.rand]
-version = "0.7.3"
+version = "0.8.5"
 features = ["log"]
 
 [dev-dependencies]
