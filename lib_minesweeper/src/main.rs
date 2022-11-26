@@ -14,9 +14,6 @@ use lib_minesweeper::MapElementCellState::Open;
 use lib_minesweeper::Point;
 
 fn main() {
-    //let height = rand::thread_rng().gen_range(5, 30);
-    //let width = rand::thread_rng().gen_range(5, 30);
-    //let mines = rand::thread_rng().gen_range((height * width) / 4, (height * width) * 5 / 10);
     let width = 8;
     let height = 8;
     let mines = 10;

@@ -593,8 +593,6 @@ impl BoardItem {
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    //yew::initialize();
-    //App::<Model>::new().mount_as_body();
     yew::Renderer::<Model>::default().render();
 
     gloo::console::log!("App initialized");
