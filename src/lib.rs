@@ -17,14 +17,11 @@ use lib_minesweeper::MapElementCellState::Flagged;
 use lib_minesweeper::MapElementCellState::Open;
 use lib_minesweeper::Point;
 
-use std::time::Duration;
-
 use wasm_bindgen::prelude::*;
 
 use serde_derive::{Deserialize, Serialize};
 //use yew::format::Json;
 use yew::prelude::*;
-use yew::services::{ConsoleService, IntervalService};
 
 use js_sys::Date;
 
@@ -82,7 +79,6 @@ enum Difficulty {
     Hard,
 }
 struct Model {
-    link: ComponentLink<Self>,
     //storage: StorageService,
     state: State,
 }
@@ -106,7 +102,7 @@ pub struct State {
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_: &Context<Self>) -> Self {
         //let storage = StorageService::new(Area::Local).expect("storage was disabled by the user");
         //        let difficulty = {
         //            if let Json(Ok(restored_model)) = storage.restore(KEY) {
@@ -121,13 +117,12 @@ impl Component for Model {
             board: small_board(),
         };
         Self {
-            link,
             //storage,
             state,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ToggleDifficulty => self.toggle_difficulty(),
             Msg::ToggleMode => self.toggle_mode(),
@@ -137,26 +132,26 @@ impl Component for Model {
         true
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <body class={self.render_body_class()}>
                 <div id="difficulty_button_placeholder" class="flex-container">
                     <div
                      id="difficulty-button"
                      class="clickable item"
-                     onclick=self.link.callback(|_| Msg::ToggleDifficulty) >
+                     onclick={ctx.link().callback(|_| Msg::ToggleDifficulty)} >
                         { self.render_difficulty() }
                     </div>
                     <div
                      id="mode-button"
                      class={self.render_mode_class()}
-                     onclick=self.link.callback(|_| Msg::ToggleMode) >
+                     onclick={ctx.link().callback(|_| Msg::ToggleMode)} >
                         { self.render_mode() }
                     </div>
                     <div
                      id="robot-button"
                      class={self.render_mode_class()}
-                     onclick=self.link.callback(|_| Msg::RunRobot) >
+                     onclick={ctx.link().callback(|_| Msg::RunRobot)} >
                         { self.render_robot()}
                     </div>
                     <TimeKeeper op={
@@ -185,7 +180,7 @@ impl Component for Model {
                                                                 board_state={board.state.clone()}
                                                                 board_width={board.width}
                                                                 element={board.at(&Point::new(x,y)).unwrap().clone()}
-                                                                update_signal={self.link.callback(|msg:Msg| msg)}/>
+                                                                update_signal={ctx.link().callback(|msg:Msg| msg)}/>
                                                         }
                                                     }
                                                 })
@@ -195,10 +190,6 @@ impl Component for Model {
                 </div>
             </body>
         }
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        true
     }
 }
 
@@ -392,11 +383,11 @@ enum TimeKeeperOp {
 struct TimeKeeperState {
     started_at: Option<Date>,
     stopped_at: Option<Date>,
-    _handle: yew::services::interval::IntervalTask,
+    op: TimeKeeperOp,
+    _handle: gloo_timers::callback::Interval,
 }
 
 struct TimeKeeper {
-    props: TimeKeeperProps,
     state: TimeKeeperState,
 }
 
@@ -407,20 +398,25 @@ enum TimeKeeperMsg {
 impl Component for TimeKeeper {
     type Message = TimeKeeperMsg;
     type Properties = TimeKeeperProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback_tick = link.callback(|_| TimeKeeperMsg::Tick);
-        let _handle = IntervalService::spawn(Duration::from_millis(100), callback_tick);
+    fn create(ctx: &Context<Self>) -> Self {
+        let props = ctx.props();
+        let link = ctx.link().clone();
+        let _handle = gloo_timers::callback::Interval::new(100, move || {
+            link.send_message(TimeKeeperMsg::Tick)
+        });
 
         let state = TimeKeeperState {
             started_at: None,
             stopped_at: None,
+            op: props.op,
             _handle,
         };
-        Self { state, props }
+        Self { state }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        let should_render = match (&self.props.op, props.op) {
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        let props = ctx.props();
+        let should_render = match (&self.state.op, props.op) {
             (TimeKeeperOp::Counting, TimeKeeperOp::Reset)
             | (TimeKeeperOp::Stopped, TimeKeeperOp::Reset) => {
                 self.state.started_at = None;
@@ -445,11 +441,11 @@ impl Component for TimeKeeper {
             }
             (TimeKeeperOp::Stopped, TimeKeeperOp::Stopped) => false,
         };
-        self.props = props;
+        self.state.op = props.op;
         should_render
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <div id = "time_container" class= "item not-clickable">
                 <p> { self.render_timer() } </p>
@@ -457,7 +453,7 @@ impl Component for TimeKeeper {
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             TimeKeeperMsg::Tick => {}
         }
@@ -500,18 +496,21 @@ struct BoardItemProps {
 }
 
 struct BoardItem {
-    link: ComponentLink<Self>,
     props: BoardItemProps,
 }
 
 impl Component for BoardItem {
     type Message = Msg;
     type Properties = BoardItemProps;
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { props, link }
+    fn create(ctx: &Context<Self>) -> Self {
+        let props = ctx.props();
+        Self {
+            props: props.clone(),
+        }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        let props = ctx.props();
         if self.props.x == props.x
             && self.props.y == props.y
             && self.props.board_state == props.board_state
@@ -520,12 +519,12 @@ impl Component for BoardItem {
         {
             false
         } else {
-            self.props = props;
+            self.props = props.clone();
             true
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::UpdateBoard { point } => self.props.update_signal.emit(Msg::UpdateBoard { point }),
             _ => unreachable!(),
@@ -533,7 +532,7 @@ impl Component for BoardItem {
         true
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let x = self.props.x;
         let y = self.props.y;
         html! {
@@ -554,7 +553,7 @@ impl Component for BoardItem {
                      _ => String::from("item not-clickable2")
              }}
                 style={self.get_item_style()}
-                onclick=self.link.callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}}) >
+                onclick={ctx.link().callback(move |_| {Msg::UpdateBoard {point:Point::new(x,y)}})} >
                 <div style="width:100%; text-align:center"> {
                     match (&self.props.board_state, &self.props.element) {
                         (Ready, Number { state: Flagged, .. })
@@ -594,8 +593,10 @@ impl BoardItem {
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    yew::initialize();
-    App::<Model>::new().mount_as_body();
-    ConsoleService::log("App initialized");
+    //yew::initialize();
+    //App::<Model>::new().mount_as_body();
+    yew::start_app::<Model>();
+
+    gloo::console::log!("App initialized");
     Ok(())
 }
