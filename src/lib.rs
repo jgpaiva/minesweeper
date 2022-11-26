@@ -134,7 +134,7 @@ impl Component for Model {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <body class={self.render_body_class()}>
+            <div class={self.render_main_container_class()}>
                 <div id="difficulty_button_placeholder" class="flex-container">
                     <div
                      id="difficulty-button"
@@ -188,7 +188,7 @@ impl Component for Model {
                         }
                     </div>
                 </div>
-            </body>
+            </div>
         }
     }
 }
@@ -228,7 +228,7 @@ impl Model {
         }
     }
 
-    fn render_body_class(&self) -> String {
+    fn render_main_container_class(&self) -> String {
         match self.state.board.state {
             Ready | Playing => "ongoing",
             Won => "won",
