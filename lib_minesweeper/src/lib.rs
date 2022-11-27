@@ -333,6 +333,22 @@ pub mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
+    macro_rules! board_matches {
+        ($value: expr, $expected: literal) => {
+            let s = board_to_string(&$value);
+            for (i, (line_value, line_expected)) in s.lines().zip($expected.lines()).enumerate() {
+                let line_expected = line_expected.trim();
+                assert_eq!(line_value, line_expected, "boards didn't match on line {i}");
+            }
+        };
+    }
+
+    macro_rules! map {
+        ($bombs: literal, $state: literal) => {
+            make_map($bombs, $state)
+        };
+    }
+
     impl From<&u8> for MapElementCellState {
         fn from(state: &u8) -> Self {
             match state {
@@ -348,10 +364,12 @@ pub mod tests {
         (c as i32) - (b'0' as i32)
     }
 
-    fn make_map(map: Vec<String>, state: Vec<String>) -> Vec<Vec<MapElement>> {
-        map.iter()
-            .zip(state)
+    fn make_map(map: &str, state: &str) -> Vec<Vec<MapElement>> {
+        map.lines()
+            .zip(state.lines())
             .map(|(map_row, state_row)| {
+                let map_row = map_row.trim();
+                let state_row = state_row.trim();
                 map_row
                     .as_bytes()
                     .iter()
@@ -372,9 +390,13 @@ pub mod tests {
 
     #[test]
     fn test_make_map() {
-        let map = make_map(
-            vec![String::from("00"), String::from("22"), String::from("XX")],
-            vec![String::from("OC"), String::from("FC"), String::from("CF")],
+        let map = map!(
+            "00
+             22
+             XX",
+            "OC
+             FC
+             CF"
         );
         let expected_map = vec![
             vec![
@@ -404,26 +426,24 @@ pub mod tests {
     }
 
     pub fn five_by_four_board() -> Board {
-        Board::new(make_map(
-            vec![
-                String::from("X0000"),
-                String::from("0X000"),
-                String::from("00X00"),
-                String::from("000X0"),
-            ],
-            vec![
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-            ],
+        Board::new(map!(
+            "X0000
+             0X000
+             00X00
+             000X0",
+            "CCCCC
+             CCCCC
+             CCCCC
+             CCCCC"
         ))
     }
 
     pub fn five_by_two_board() -> Board {
-        Board::new(make_map(
-            vec![String::from("X0000"), String::from("0X000")],
-            vec![String::from("CCCCC"), String::from("CCCCC")],
+        Board::new(map!(
+            "X0000
+             0X000",
+            "CCCCC
+             CCCCC"
         ))
     }
 
@@ -456,19 +476,15 @@ pub mod tests {
     #[test]
     fn test_numbers_on_board() {
         let board = numbers_on_board(five_by_four_board());
-        let expected_map = make_map(
-            vec![
-                String::from("X2100"),
-                String::from("2X210"),
-                String::from("12X21"),
-                String::from("012X1"),
-            ],
-            vec![
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-                String::from("CCCCC"),
-            ],
+        let expected_map = map!(
+            "X2100
+             2X210
+             12X21
+             012X1",
+            "CCCCC
+             CCCCC
+             CCCCC
+             CCCCC"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Ready);
@@ -492,9 +508,11 @@ pub mod tests {
     fn test_cascade_open_item() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCOOO"), String::from("CCOOO")],
+        let expected_map = map!(
+            "X2100
+             2X100",
+            "CCOOO
+             CCOOO"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
@@ -506,9 +524,11 @@ pub mod tests {
         let board = board.cascade_open_item(&Point::new(3, 1)).unwrap();
         let board = board.cascade_open_item(&Point::new(0, 1)).unwrap();
         let board = board.cascade_open_item(&Point::new(1, 0)).unwrap();
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("COOOO"), String::from("OCOOO")],
+        let expected_map = map!(
+            "X2100
+             2X100",
+            "COOOO
+             OCOOO"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Won);
@@ -518,9 +538,11 @@ pub mod tests {
     fn test_flag() {
         let board = numbers_on_board(five_by_two_board());
         let board = board.flag_item(&Point::new(3, 1));
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCCCC"), String::from("CCCFC")],
+        let expected_map = map!(
+            "X2100
+             2X100",
+            "CCCCC
+             CCCFC"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
@@ -531,9 +553,11 @@ pub mod tests {
         let board = numbers_on_board(five_by_two_board());
         let board = board.flag_item(&Point::new(3, 1));
         let board = board.flag_item(&Point::new(3, 1));
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCCCC"), String::from("CCCCC")],
+        let expected_map = map!(
+            "X2100
+             2X100",
+            "CCCCC
+             CCCCC"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
@@ -544,22 +568,14 @@ pub mod tests {
         let board = numbers_on_board(five_by_two_board());
         let board = board.cascade_open_item(&Point::new(2, 0)).unwrap();
         let board = board.flag_item(&Point::new(2, 0));
-        let expected_map = make_map(
-            vec![String::from("X2100"), String::from("2X100")],
-            vec![String::from("CCOCC"), String::from("CCCCC")],
+        let expected_map = map!(
+            "X2100
+             2X100",
+            "CCOCC
+             CCCCC"
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
-    }
-
-    macro_rules! board_matches {
-        ($value: expr, $expected: literal) => {
-            let s = board_to_string(&$value);
-            for (i, (line_value, line_expected)) in s.lines().zip($expected.lines()).enumerate() {
-                let line_expected = line_expected.trim();
-                assert_eq!(line_value, line_expected, "boards didn't match on line {i}");
-            }
-        };
     }
 
     fn board_to_string(board: &Board) -> String {
@@ -575,7 +591,7 @@ pub mod tests {
                     | Number {
                         state: MapElementCellState::Flagged,
                         ..
-                    } => "⚑".to_string(),
+                    } => "F".to_string(),
                     Number {
                         state: MapElementCellState::Closed,
                         ..
@@ -611,27 +627,53 @@ pub mod tests {
         board_matches!(
             board,
             "••1••
-             •⚑•••"
+             •F•••"
         );
         let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
         board_matches!(
             board,
             "•21••
-             •⚑•••"
+             •F•••"
         );
         let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
         board_matches!(
             board,
             "•21••
-             •⚑1••"
+             •F1••"
         );
         let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
         board_matches!(
             board,
             "•21__
-             •⚑1__"
+             •F1__"
         );
         let res = board.run_robot_on_point(Point::new(2, 0));
         assert!(res.is_none());
+    }
+
+    #[ignore] // currently working on this test
+    #[test]
+    fn test_advanced_run_robot_on_point() {
+        let board = numbers_on_board(Board::new(map!(
+            "X0X
+             000
+             000",
+            "COC
+             COO
+             CCC"
+        )));
+        board_matches!(
+            board,
+            "•2•
+             •21
+             •••"
+        );
+        let board = board.run_robot_on_point(Point::new(4, 0)).unwrap();
+        board_matches!(
+            board,
+            "•2F
+             •21
+             •••"
+        );
     }
 }
