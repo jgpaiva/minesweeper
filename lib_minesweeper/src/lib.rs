@@ -199,6 +199,60 @@ impl Board {
             })
             .collect()
     }
+
+    pub fn run_robot_on_point(&self, p: Point) -> Option<Board> {
+        let el = self.at(&p).unwrap();
+        let Number {
+            state: Open,
+            count: mine_count,
+        } = el else {
+            return None
+        };
+        if *mine_count == 0 {
+            return None;
+        }
+        let surrounding_points = self.surrounding_points(&p);
+        let surrounding_els: Vec<_> = surrounding_points
+            .iter()
+            .map(|p| (p, self.at(p).unwrap().clone()))
+            .filter(|(_p, el)| {
+                !matches!(
+                    el,
+                    Number {
+                        state: Open,
+                        count: 0
+                    }
+                )
+            })
+            .collect();
+        let mut unopened = surrounding_els
+            .iter()
+            .filter(|(_p, el)| !matches!(el, Number { state: Open, .. }));
+        let flagged_count = surrounding_els
+            .iter()
+            .filter(|(_p, el)| {
+                matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+            })
+            .count();
+        let unopened_count = unopened.clone().count();
+        if *mine_count == unopened_count as i32 && flagged_count < unopened_count {
+            let (p, _el) = unopened
+                .find(|(_p, el)| {
+                    !matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+                })
+                .unwrap();
+            return Some(self.flag_item(p));
+        }
+        if *mine_count == flagged_count as i32 && unopened_count - flagged_count > 0 {
+            let (p, _el) = unopened
+                .find(|(_p, el)| {
+                    !matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+                })
+                .unwrap();
+            return self.cascade_open_item(p);
+        }
+        None
+    }
 }
 
 pub fn create_board(
@@ -279,12 +333,14 @@ pub mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn state_from_bytes(state: u8) -> MapElementCellState {
-        match state {
-            b'O' => Open,
-            b'C' => Closed,
-            b'F' => Flagged,
-            _ => unreachable!(),
+    impl From<&u8> for MapElementCellState {
+        fn from(state: &u8) -> Self {
+            match state {
+                b'O' => Open,
+                b'C' => Closed,
+                b'F' => Flagged,
+                _ => unreachable!(),
+            }
         }
     }
 
@@ -302,10 +358,10 @@ pub mod tests {
                     .zip(state_row.as_bytes())
                     .map(|(row_el, state_el)| match row_el {
                         b'X' => Mine {
-                            state: state_from_bytes(*state_el),
+                            state: state_el.into(),
                         },
                         _ => Number {
-                            state: state_from_bytes(*state_el),
+                            state: state_el.into(),
                             count: count_from_bytes(*row_el),
                         },
                     })
@@ -494,5 +550,88 @@ pub mod tests {
         );
         assert_eq!(board.map, expected_map);
         assert_eq!(board.state, BoardState::Playing);
+    }
+
+    macro_rules! board_matches {
+        ($value: expr, $expected: literal) => {
+            let s = board_to_string(&$value);
+            for (i, (line_value, line_expected)) in s.lines().zip($expected.lines()).enumerate() {
+                let line_expected = line_expected.trim();
+                assert_eq!(line_value, line_expected, "boards didn't match on line {i}");
+            }
+        };
+    }
+
+    fn board_to_string(board: &Board) -> String {
+        let mut ret = String::default();
+        for y in 0..board.height {
+            for x in 0..board.width {
+                let p = Point::new(x, y);
+                let el = board.at(&p).unwrap();
+                let v = match el {
+                    Mine {
+                        state: MapElementCellState::Flagged,
+                    }
+                    | Number {
+                        state: MapElementCellState::Flagged,
+                        ..
+                    } => "⚑".to_string(),
+                    Number {
+                        state: MapElementCellState::Closed,
+                        ..
+                    }
+                    | Mine {
+                        state: MapElementCellState::Closed,
+                    } => "•".to_string(),
+                    Number {
+                        state: MapElementCellState::Open,
+                        count: 0,
+                    } => "_".to_string(),
+                    Number {
+                        state: MapElementCellState::Open,
+                        count,
+                    } => count.to_string(),
+                    _ => unreachable!(),
+                };
+                ret.push_str(&v);
+            }
+            ret.push('\n');
+        }
+        ret
+    }
+
+    #[test]
+    fn test_run_robot_on_point() {
+        let board = numbers_on_board(five_by_two_board());
+        let res = board.run_robot_on_point(Point::new(4, 0));
+        assert!(res.is_none());
+
+        let board = board.flag_item(&Point::new(1, 1));
+        let board = board.cascade_open_item(&Point::new(2, 0)).unwrap();
+        board_matches!(
+            board,
+            "••1••
+             •⚑•••"
+        );
+        let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
+        board_matches!(
+            board,
+            "•21••
+             •⚑•••"
+        );
+        let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
+        board_matches!(
+            board,
+            "•21••
+             •⚑1••"
+        );
+        let board = board.run_robot_on_point(Point::new(2, 0)).unwrap();
+        board_matches!(
+            board,
+            "•21__
+             •⚑1__"
+        );
+        let res = board.run_robot_on_point(Point::new(2, 0));
+        assert!(res.is_none());
     }
 }

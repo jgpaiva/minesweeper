@@ -303,68 +303,66 @@ impl Model {
         for x in 0..board.width {
             for y in 0..board.height {
                 let p = Point::new(x, y);
-                let el = board.at(&p).unwrap();
-                match el {
-                    Number {
-                        state: Open,
-                        count: mine_count,
-                    } if *mine_count > 0 => {
-                        let surrounding_points = board.surrounding_points(&p);
-                        let surrounding_els: Vec<(&Point, MapElement)> = surrounding_points
-                            .iter()
-                            .map(|p| (p, board.at(p).unwrap().clone()))
-                            .filter(|(_p, el)| {
-                                !matches!(
-                                    el,
-                                    Number {
-                                        state: Open,
-                                        count: 0
-                                    }
-                                )
-                            })
-                            .collect();
-                        let mut unopened = surrounding_els
-                            .iter()
-                            .filter(|(_p, el)| !matches!(el, Number { state: Open, .. }));
-                        let flagged = surrounding_els.iter().filter(|(_p, el)| {
-                            matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
-                        });
-                        let unopened_count = unopened.clone().count();
-                        let flagged_count = flagged.count();
-
-                        if *mine_count == unopened_count as i32 && flagged_count < unopened_count {
-                            let (p, _el) = unopened
-                                .find(|(_p, el)| {
-                                    !matches!(
-                                        el,
-                                        Mine { state: Flagged } | Number { state: Flagged, .. }
-                                    )
-                                })
-                                .unwrap();
-                            self.state.board = self.state.board.flag_item(p);
-                            return;
-                        }
-
-                        if *mine_count == flagged_count as i32 && unopened_count - flagged_count > 0
-                        {
-                            let (p, _el) = unopened
-                                .find(|(_p, el)| {
-                                    !matches!(
-                                        el,
-                                        Mine { state: Flagged } | Number { state: Flagged, .. }
-                                    )
-                                })
-                                .unwrap();
-                            if let Some(b) = self.state.board.cascade_open_item(p) {
-                                self.state.board = b;
-                                return;
-                            }
-                        }
-                    }
-                    _ => (),
+                if let Some(board) = Self::run_robot_on_point(board, p) {
+                    self.state.board = board;
+                    return;
                 }
             }
         }
+    }
+
+    fn run_robot_on_point(board: &Board, p: Point) -> Option<Board> {
+        let el = board.at(&p).unwrap();
+        let Number {
+            state: Open,
+            count: mine_count,
+        } = el else {
+            return None
+        };
+        if *mine_count == 0 {
+            return None;
+        }
+        let surrounding_points = board.surrounding_points(&p);
+        let surrounding_els: Vec<_> = surrounding_points
+            .iter()
+            .map(|p| (p, board.at(p).unwrap().clone()))
+            .filter(|(_p, el)| {
+                !matches!(
+                    el,
+                    Number {
+                        state: Open,
+                        count: 0
+                    }
+                )
+            })
+            .collect();
+        let mut unopened = surrounding_els
+            .iter()
+            .filter(|(_p, el)| !matches!(el, Number { state: Open, .. }));
+        let flagged_count = surrounding_els
+            .iter()
+            .filter(|(_p, el)| {
+                matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+            })
+            .count();
+        let unopened_count = unopened.clone().count();
+        if *mine_count == unopened_count as i32 && flagged_count < unopened_count {
+            let (p, _el) = unopened
+                .find(|(_p, el)| {
+                    !matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+                })
+                .unwrap();
+            return Some(board.flag_item(p));
+        }
+        if *mine_count == flagged_count as i32 && unopened_count - flagged_count > 0 {
+            let (p, _el) = unopened
+                .find(|(_p, el)| {
+                    !matches!(el, Mine { state: Flagged } | Number { state: Flagged, .. })
+                })
+                .unwrap();
+            return board.cascade_open_item(p);
+        }
+        None
     }
 }
 
